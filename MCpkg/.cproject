@@ -35,7 +35,10 @@
 									<listOptionValue builtIn="false" value="/Library/Frameworks/R.framework/Versions/2.15/Resources/library/RInside/include"/>
 									<listOptionValue builtIn="false" value="/Library/Frameworks/R.framework/Versions/2.15/Resources/include"/>
 								</option>
-								<option id="gnu.cpp.compiler.option.other.other.1390489673" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0" valueType="string"/>
+								<option id="gnu.cpp.compiler.option.other.other.1390489673" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -arch x86_64" valueType="string"/>
+								<option id="gnu.cpp.compiler.option.preprocessor.def.1679328078" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="INSIDE"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.286433792" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.linker.261311483" name="Cross GCC Linker" superClass="cdt.managedbuild.tool.gnu.cross.c.linker"/>
@@ -46,7 +49,7 @@
 								<option id="gnu.cpp.link.option.paths.201076600" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="/Library/Frameworks/R.framework/Versions/2.15/Resources/lib/x86_64"/>
 								</option>
-								<option id="gnu.cpp.link.option.flags.1602344444" name="Linker flags" superClass="gnu.cpp.link.option.flags" value="" valueType="string"/>
+								<option id="gnu.cpp.link.option.flags.1602344444" name="Linker flags" superClass="gnu.cpp.link.option.flags" value="-arch x86_64" valueType="string"/>
 								<option id="gnu.cpp.link.option.userobjs.2093356341" name="Other objects" superClass="gnu.cpp.link.option.userobjs" valueType="userObjs">
 									<listOptionValue builtIn="false" value="/Library/Frameworks/R.framework/Versions/2.15/Resources/library/RInside/lib/x86_64/libRInside.a"/>
 									<listOptionValue builtIn="false" value="/Library/Frameworks/R.framework/Versions/2.15/Resources/library/Rcpp/lib/x86_64/libRcpp.a"/>
