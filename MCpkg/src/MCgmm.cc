@@ -64,11 +64,13 @@ void MCgmm_impl (rng<RNGTYPE>& stream, SEXP& fun,
 }
 extern "C" {
 
-   SEXP MCgmm_cc(SEXP fun, SEXP myframe, SEXP nobs_R, SEXP niter_R,
-		           SEXP parameterList_R,
-		           SEXP covM_R, SEXP verbose, SEXP ar_R, SEXP ma_R,
-		           SEXP dim_modCov_R, SEXP lecuyer_R, SEXP seedarray_R,
-		           SEXP lecuyerstream_R) 
+   SEXP MCgmm_cc(SEXP fun, SEXP myframe,
+		   SEXP parameterList_R, SEXP arList_R, SEXP maList_R,
+		   SEXP nobs_R, SEXP niter_R,
+		   SEXP covM_R, SEXP verbose, SEXP ar_R, SEXP ma_R,
+           SEXP dim_modCov_R,
+           SEXP lecuyer_R, SEXP seedarray_R,
+           SEXP lecuyerstream_R)
    {
 	   // put rng stuff together
 	   int seedarray[6];

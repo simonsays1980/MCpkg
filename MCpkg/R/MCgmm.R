@@ -107,7 +107,7 @@
   
   # call C++ function to do the sampling 
   sample <- .Call("MCgmm_cc", gmm.fun, env.gmm.fun, 
-                  as.list(parameter.list),
+                  as.list(parameter.list), as.list(ar.list), as.list(ma.list),
                   as.integer(nobs), as.integer(niter),
                   as.matrix(model.covM), as.logic(verbose), 
                   as.integer(n.ar), as.integer(n.ma),
