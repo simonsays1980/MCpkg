@@ -37,9 +37,9 @@
 #include "algorithm.h"
 #include "error.h"
 #else
-#include "scythestat/matrix.h"
-#include "scythestat/algorithm.h"
-#include "scythestat/error.h"
+#include "matrix.h"
+#include "algorithm.h"
+#include "error.h"
 #endif
 
 #include <cmath>

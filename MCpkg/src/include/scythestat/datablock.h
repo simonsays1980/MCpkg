@@ -43,7 +43,7 @@
 #ifdef SCYTHE_COMPILE_DIRECT
 #include "error.h"
 #else
-#include "scythestat/error.h"
+#include "error.h"
 #endif
 
 #ifdef SCYTHE_PTHREAD

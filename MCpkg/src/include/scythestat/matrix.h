@@ -68,15 +68,15 @@
 #include "lapack.h"
 #endif
 #else
-#include "scythestat/defs.h"
-#include "scythestat/algorithm.h"
-#include "scythestat/error.h"
-#include "scythestat/datablock.h"
-#include "scythestat/matrix_random_access_iterator.h"
-#include "scythestat/matrix_forward_iterator.h"
-#include "scythestat/matrix_bidirectional_iterator.h"
+#include "defs.h"
+#include "algorithm.h"
+#include "error.h"
+#include "datablock.h"
+#include "matrix_random_access_iterator.h"
+#include "matrix_forward_iterator.h"
+#include "matrix_bidirectional_iterator.h"
 #ifdef SCYTHE_LAPACK
-#include "scythestat/lapack.h"
+#include "lapack.h"
 #endif
 #endif
 

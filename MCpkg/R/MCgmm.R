@@ -11,7 +11,7 @@
                                                   "qhyper", "qnbinom", "qpois", "qweibull", "qlogis", "qnbeta",
                                                   "qnf", "qnt", "qtukey", "qwilcox", "qsignrank")),
                     model.covM = NULL,
-                    verbose = TRUE,
+                    verbose = 1,
                     force.samp = FALSE,
                     nobs = 1000, niter = 1000, ...) {
   
@@ -107,9 +107,11 @@
   
   # call C++ function to do the sampling 
   sample <- .Call("MCgmm_cc", gmm.fun, env.gmm.fun, 
-                  as.list(parameter.list), as.list(ar.list), as.list(ma.list),
+                  as.list(parameter.list), as.list(margin.regressor.list),
+				  as.list(margin.error.list),
+				  as.list(ar.list), as.list(ma.list),
                   as.integer(nobs), as.integer(niter),
-                  as.matrix(model.covM), as.logic(verbose), 
+                  as.matrix(model.covM), as.integer(verbose), 
                   as.integer(n.ar), as.integer(n.ma),
                   as.integer(dim.model.covM),
                   lecuyer = as.integer(lecuyer), 

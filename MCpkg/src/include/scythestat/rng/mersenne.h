@@ -75,7 +75,7 @@
 #ifdef SCYTHE_COMPILE_DIRECT
 #include "rng.h"
 #else
-#include "scythestat/rng.h"
+#include "../rng.h"
 #endif
 
 namespace scythe {

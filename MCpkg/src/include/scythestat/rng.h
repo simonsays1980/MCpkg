@@ -51,12 +51,12 @@
 #include "ide.h"
 #include "la.h"
 #else
-#include "scythestat/matrix.h"
-#include "scythestat/error.h"
-#include "scythestat/algorithm.h"
-#include "scythestat/distributions.h"
-#include "scythestat/ide.h"
-#include "scythestat/la.h"
+#include "matrix.h"
+#include "error.h"
+#include "algorithm.h"
+#include "distributions.h"
+#include "ide.h"
+#include "la.h"
 #endif
 
 namespace scythe {

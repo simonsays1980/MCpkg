@@ -23,8 +23,8 @@
 //    and Jong Hee Park
 //////////////////////////////////////////////////////////////////////////
 
-#ifndef MCMCRNG_H
-#define MCMCRNG_H
+#ifndef MCRNG_H
+#define MCRNG_H
 
 #include "include/scythestat/rng/mersenne.h"
 #include "include/scythestat/rng/lecuyer.h"
@@ -44,7 +44,7 @@
  * streams to use.
  */
 
-#define MCMCPACK_PASSRNG2MODEL(MODEL_IMPL, ...)                           \
+#define MCPKG_PASSRNG2MODEL(MODEL_IMPL, ...)                           \
 {                                                                         \
   unsigned long u_seed_array[6];                                          \
   for (int i = 0; i < 6; ++i)                                             \

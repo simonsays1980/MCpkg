@@ -69,9 +69,9 @@
 #include "ide.h"
 #include "error.h"
 #else
-#include "scythestat/matrix.h"
-#include "scythestat/ide.h"
-#include "scythestat/error.h"
+#include "matrix.h"
+#include "ide.h"
+#include "error.h"
 #endif
 
 /* Fill in some defs from R that aren't in math.h */

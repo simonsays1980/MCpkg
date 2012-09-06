@@ -42,9 +42,9 @@
 #include "error.h"
 #include "matrix.h"
 #else
-#include "scythestat/defs.h"
-#include "scythestat/error.h"
-#include "scythestat/matrix.h"
+#include "defs.h"
+#include "error.h"
+#include "matrix.h"
 #endif
 
 /* The const_matrix_iterator and matrix_iterator classes are

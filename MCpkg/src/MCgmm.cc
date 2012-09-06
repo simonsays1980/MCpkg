@@ -27,12 +27,12 @@ double user_fun_gmm(SEXP fun, SEXP par, SEXP myframe) {
 	if(!isEnvironment(myframe)) error("myframe must be an environment");
 	
 	PROTECT(R_fcall = lang2(fun, R_NilValue));
-	SETCADR(R_fcall, vartheta);
+	SETCADR(R_fcall, par);
 	SEXP funval;
 	PROTECT(funval = eval(R_fcall, myframe));
 	
 	if (!isReal(funval)) error("`fun' must return a double");
-	double fv = REAL(funval); //TODO: Make sure you put in the GMM objective function
+	double fv = REAL(funval)[0]; // TODO: Make sure you put in the GMM objective function
 	if (fv == R_PosInf) error("`fun' returned +Inf");
 	if (R_IsNaN(fv) || R_IsNA(fv)) error("`fun' returned NaN or NA");
 	UNPROTECT(2);
@@ -41,31 +41,46 @@ double user_fun_gmm(SEXP fun, SEXP par, SEXP myframe) {
 }
 
 template<typename RNGTYPE>
-void MCgmm_impl (rng<RNGTYPE>& stream, SEXP& fun,
-		         SEXP& parlist, unsigned int nobs, unsigned int niter,
-		         SEXP& myframe, bool verbose, const Matrix<>& covM,
+void MCgmm_impl (rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
+		         SEXP& parlist, SEXP& mreglist, SEXP& merrlist,
+		         SEXP& arlist, SEXP& malist,
+		         const unsigned int nobs, const unsigned int niter,
+		         const unsigned int nar, const unsigned int nma,
+		         const unsigned int verbose, const Matrix<>& covM,
 		         SEXP& sample_SEXP)
 {
 	// define constants 
-	const unsigned int nouter_par = length(parlist);
-	const unsigned int npar = length(REAL(VECTOR_ELT(parlist,0))[0]);
-	const Matrix<> covMc = cholesky(covM);
+	const unsigned int nmodels = length(parlist);
+	const unsigned int npar = length(VECTOR_ELT(parlist,0));
+	const unsigned int nreg = length(VECTOR_ELT(mreglist, 0));
+	const unsigned int nerr = length(VECTOR_ELT(merrlist, 0));
+	const unsigned int ndim = nreg - nar + nerr - nma;
 
 	// Initialize matrix to hold the sample
 	Matrix<> sample(niter, npar, false);
 
 	// Initialize list to hold all samples
-	std::vector<Matrix<> > sampleL = std::vector(nouter_par);
+	std::vector<Matrix<> > sampleL = std::vector<Matrix<> >(nmodels);
 
-	// put parameters into a scythe Matrix
-	double* par_data = REAL(parlist);
+	// initialize matrix of means
+	Matrix<> mu(ndim, 1);
+	// THE MONTE CARLO SAMPLING
+	for (unsigned int m = 0; m < nmodels; ++m) { // models
+
+		Matrix<> sample_par(niter, npar, false);
+		for (unsigned int i = 0; i < niter; ++i) { // iterations
+
+			Matrix<> sample_copV = stream.rmvnorm(mu, covM);
+		}
+	}
 
 
 }
 extern "C" {
 
    SEXP MCgmm_cc(SEXP fun, SEXP myframe,
-		   SEXP parameterList_R, SEXP arList_R, SEXP maList_R,
+		   SEXP parameterList_R, SEXP margin_regList_r,
+		   SEXP margin_errList_R, SEXP arList_R, SEXP maList_R,
 		   SEXP nobs_R, SEXP niter_R,
 		   SEXP covM_R, SEXP verbose, SEXP ar_R, SEXP ma_R,
            SEXP dim_modCov_R,
@@ -85,7 +100,6 @@ extern "C" {
 	   const int covM_nr = nrows(covM_R);
 	   const int covM_nc = ncols(covM_R);
 	   Matrix <> covM (covM_nc, covM_nr, covM_data);
-	   covM = t(covM);
 	   
 	   const unsigned int nmodels = length(parameterList_R);
 	   const unsigned int niter = niter;
@@ -97,10 +111,20 @@ extern "C" {
 	   for (unsigned int m = 0; m < nmodels; ++m) {
 		   SEXP sample_vec_SEXP;
 		   PROTECT(sample_vec_SEXP = allocMatrix(REALSXP, niter, npar));
-           SET_VECTOR_ELT(sample_SEXP, m, sample_vec_SXP);
+           SET_VECTOR_ELT(sample_SEXP, m, sample_vec_SEXP);
 	   }
-	   Rprintf("I am arrived");
 	   
-	   
+	   MCPKG_PASSRNG2MODEL(MCgmm_impl, fun, myframe, parameterList_R,
+			   margin_regList_r, margin_errList_R,
+			   arList_R, maList_R, INTEGER(nobs_R)[0], INTEGER(niter_R)[0],
+			   INTEGER(ar_R)[0], INTEGER(ma_R)[0], INTEGER(verbose)[0],
+			   covM, sample_SEXP);
+	   UNPROTECT(1 + nmodels);
+
+	   // return the sample of parameters
+       return sample_SEXP;
+
    }
 }
+
+#endif

@@ -79,9 +79,9 @@
 #include "stat.h"
 #endif
 #else
-#include "scythestat/matrix.h"
-#include "scythestat/error.h"
-#include "scythestat/defs.h"
+#include "matrix.h"
+#include "error.h"
+#include "defs.h"
 #ifdef SCYTHE_LAPACK
 #include "scythestat/lapack.h"
 #include "scythestat/stat.h"
