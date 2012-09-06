@@ -85,14 +85,20 @@ extern "C" {
 	   const int covM_nr = nrows(covM_R);
 	   const int covM_nc = ncols(covM_R);
 	   Matrix <> covM (covM_nc, covM_nr, covM_data);
-	   propvar = t(covM);
+	   covM = t(covM);
 	   
-	   const unsigned int npar = length(parameterList_R[[0]]);
-	   const unsigned int nobs = nobs;
+	   const unsigned int nmodels = length(parameterList_R);
 	   const unsigned int niter = niter;
+	   const unsigned int npar = length(VECTOR_ELT(parameterList_R,0));
 	   
+	   // set container to hold simulation values
 	   SEXP sample_SEXP;
-	   PROTECT(sample_SEXP = allocMatrix(REALSXP, niter, npar)); //TODO: Consider to add diagnostics
+	   PROTECT(sample_SEXP = allocVector(VECSXP, nmodels)); //TODO: Consider to add diagnostics
+	   for (unsigned int m = 0; m < nmodels; ++m) {
+		   SEXP sample_vec_SEXP;
+		   PROTECT(sample_vec_SEXP = allocMatrix(REALSXP, niter, npar));
+           SET_VECTOR_ELT(sample_SEXP, m, sample_vec_SXP);
+	   }
 	   Rprintf("I am arrived");
 	   
 	   

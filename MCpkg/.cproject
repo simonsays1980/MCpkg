@@ -30,13 +30,13 @@
 								<option id="gnu.cpp.compiler.option.optimization.level.111078365" name="Optimization Level" superClass="gnu.cpp.compiler.option.optimization.level" value="gnu.cpp.compiler.optimization.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.debugging.level.4015786" name="Debug Level" superClass="gnu.cpp.compiler.option.debugging.level" value="gnu.cpp.compiler.debugging.level.max" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.include.paths.271573153" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="/Library/Frameworks/R.framework/Versions/2.15/Resources/library/Rcpp/include"/>
-									<listOptionValue builtIn="false" value="/Library/Frameworks/R.framework/Versions/2.15/Resources/library/Rcpp/include/Rcpp"/>
-									<listOptionValue builtIn="false" value="/Library/Frameworks/R.framework/Versions/2.15/Resources/library/RInside/include"/>
-									<listOptionValue builtIn="false" value="/Library/Frameworks/R.framework/Versions/2.15/Resources/include"/>
+									<listOptionValue builtIn="false" value="/usr/share/R/include"/>
+									<listOptionValue builtIn="false" value="/home/simon/R/x86_64-pc-linux-gnu-library/2.15/Rcpp/include/Rcpp"/>
+									<listOptionValue builtIn="false" value="/home/simon/R/x86_64-pc-linux-gnu-library/2.15/Rcpp/include"/>
+									<listOptionValue builtIn="false" value="/home/simon/R/x86_64-pc-linux-gnu-library/2.15/RInside/include"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.other.other.1390489673" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -arch x86_64" valueType="string"/>
-								<option id="gnu.cpp.compiler.option.preprocessor.def.1679328078" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
+								<option id="gnu.cpp.compiler.option.preprocessor.def.1679328078" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="INSIDE"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.286433792" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
@@ -47,12 +47,12 @@
 									<listOptionValue builtIn="false" value="R"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.201076600" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
-									<listOptionValue builtIn="false" value="/Library/Frameworks/R.framework/Versions/2.15/Resources/lib/x86_64"/>
+									<listOptionValue builtIn="false" value="/usr/lib/R/lib"/>
 								</option>
 								<option id="gnu.cpp.link.option.flags.1602344444" name="Linker flags" superClass="gnu.cpp.link.option.flags" value="-arch x86_64" valueType="string"/>
 								<option id="gnu.cpp.link.option.userobjs.2093356341" name="Other objects" superClass="gnu.cpp.link.option.userobjs" valueType="userObjs">
-									<listOptionValue builtIn="false" value="/Library/Frameworks/R.framework/Versions/2.15/Resources/library/RInside/lib/x86_64/libRInside.a"/>
-									<listOptionValue builtIn="false" value="/Library/Frameworks/R.framework/Versions/2.15/Resources/library/Rcpp/lib/x86_64/libRcpp.a"/>
+									<listOptionValue builtIn="false" value="/home/simon/R/x86_64-pc-linux-gnu-library/2.15/RInside/lib/libRInside.a"/>
+									<listOptionValue builtIn="false" value="/home/simon/R/x86_64-pc-linux-gnu-library/2.15/Rcpp/lib/libRcpp.a"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.173619554" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
