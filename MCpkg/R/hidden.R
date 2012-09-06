@@ -108,6 +108,7 @@
                              parameter.list, nregressors, margin.error.list, 
                              margin.regressor.list) {
   
+  
   if ( is.null(fun) && is.null(formula) ) {
     cat("Error: no function specified. \n")
     stop("Respecify function and call ", calling.function(), " again. \n",
@@ -127,22 +128,43 @@
     cat("Error: no number of regressors specified. \n")
     warning("Check model and call ", calling.function(), " again. \n")
   } 
-  if( all(sapply(lapply(ar.list, is.element, c(0,1,-1)), all)) ) {
+  if( !is.null(ar.list) && all(sapply(lapply(ar.list, is.element, c(0,1,-1)), all)) ) {
     cat("Error: Autoregressive process wrongly specified. \n")
     stop("ar must be a vector of zeros and/or +/- 1. \nCheck ar and call ", calling.function(), " again. \n",
          call. = FALSE)
   }
-  if( all(sapply(lapply(ma.list, is.element, c(0,1,-1)), all)) ) {
+  if( !is.null(ma.list) && all(sapply(lapply(ma.list, is.element, c(0,1,-1)), all)) ) {
     cat("Error: Moving average process wrongly specified. \n")
     stop("ma must be a vector of zeros and/or +/- 1. \nCheck ma and call ", calling.function(), " again. \n",
          call. = FALSE)
   }
-  if( all(sapply(as.character(margin.error.list), exists)) ) {
+  if ( is.null(margin.error.list) ) {
+	  cat("Error: at least one generating function for an error term has to be specified. \n")
+	  stop("Specify a random number function and call ", calling.function(), " agqain\n", 
+			  call. = FALSE)
+  }
+  
+  choices <- c("qnorm", "qunif", "qgamma", "qbeta", "qlnorm", "qchisq", 
+		  "qnchisq", "qf", "qt", "qbinom", "qcauchy", "qexp", "qgeom",
+		  "qhyper", "qnbinom", "qpois", "qweibull", "qlogis", "qnbeta",
+		  "qnf", "qnt", "qtukey", "qwilcox", "qsignrank")
+  res <- NULL
+  try(res <- sapply(margin.error.list, match.arg, choices), silent = TRUE)
+  
+  if( is.null(res) ) {
     cat("Error: Generating function does not exist. \n")
     stop("At least one marginal function of margin.error.list, does not exist. \nCheck random number generators and call ", calling.function(), " again. \n",
          call. = FALSE)
   } 
-  if( all(sapply(as.character(margin.regressor.list), exists)) ) {
+  if ( is.null(margin.regressor.list) ) {
+	  cat("Warning: the simulation will be run with error term(s) only. \n")
+	  warnings("GMM function could behave strangly.\n")
+  }
+  
+  res <- NULL
+  try(res <- sapply(margin.regressor.list, match.arg, choices), silent = TRUE)
+  
+  if( is.null(res) ) {
     cat("Error: Generating function does not exist. \n")
     stop("At least one marginal function of margin.regressor.list does not exist. \nCheck random number generators and call ", calling.function(), " again. \n",
          .call = FALSE)

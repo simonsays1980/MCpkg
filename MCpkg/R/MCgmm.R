@@ -1,18 +1,14 @@
 "MCgmm" <- function(fun = NULL, nregressors = NULL, 
-                    ar.list = as.list(0), ma.list = as.list(0),
+		            nerrors = 1, 
+                    ar.list = NULL, ma.list = NULL,
                     parameter.list = NULL, 
-                    margin.regressor.list = as.list(c("qnorm", "qunif", "qgamma", "qbeta", "qlnorm", "qchisq", 
-                                                      "qnchisq", "qf", "qt", "qbinom", "qcauchy", "qexp", "qgeom",
-                                                      "qhyper", "qnbinom", "qpois", "qweibull", "qlogis", "qnbeta",
-                                                      "qnf", "qnt", "qtukey", "qwilcox", "qsignrank")), 
+                    margin.regressor.list = NULL, 
                     copula = c("rmvnorm", "rmvt"),
-                    margin.error.list = as.list(c("qnorm", "qunif", "qgamma", "qbeta", "qlnorm", "qchisq", 
-                                                  "qnchisq", "qf", "qt", "qbinom", "qcauchy", "qexp", "qgeom",
-                                                  "qhyper", "qnbinom", "qpois", "qweibull", "qlogis", "qnbeta",
-                                                  "qnf", "qnt", "qtukey", "qwilcox", "qsignrank")),
+                    margin.error.list = NULL,
                     model.covM = NULL,
                     verbose = 1,
                     force.samp = FALSE,
+					seed = NA,
                     nobs = 1000, niter = 1000, ...) {
   
   # check mc input 
@@ -23,8 +19,8 @@
   check.mc.parameters(nobs = nobs, niter = niter)
   
   # ma and ar terms
-  n.ar <- sum(sapply(ar.list, sum))
-  n.ma <- sum(sapply(ma.list, sum))
+  n.ar <- ifelse( !is.null(ar.list), sum(sapply(ar.list, sum)), 0 )
+  n.ma <- ifelse( !is.null(ma.list), sum(sapply(ma.list, sum)), 0 )
   dim.model.covM <- nregressors - n.ar + nerrors - n.ma
   
   # form seed
