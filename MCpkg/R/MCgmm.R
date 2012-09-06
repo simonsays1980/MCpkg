@@ -1,10 +1,10 @@
-"MCgmm" <- function(fun = NULL, nregressors = NULL, 
-		            nerrors = 1, 
-                    ar.list = NULL, ma.list = NULL,
+"MCgmm" <- function(fun = NULL, ar.list = NULL, ma.list = NULL,
                     parameter.list = NULL, 
                     margin.regressor.list = NULL, 
+					margin.regressor.parameter.list = NULL,
                     copula = c("rmvnorm", "rmvt"),
                     margin.error.list = NULL,
+					margin.error.parameter.list = NULL,
                     model.covM = NULL,
                     verbose = 1,
                     force.samp = FALSE,
@@ -12,16 +12,24 @@
                     nobs = 1000, niter = 1000, ...) {
   
   # check mc input 
-  check.mc.input(fun = fun, formula = NULL, ar.list = ar.list, ma.list = ma.list, parameter.list = parameter.list, 
-		  nregressor = nregressors, margin.error.list = margin.error.list, margin.regressor.list = margin.regressor.list)
+  check.mc.input(fun = fun, formula = NULL, ar.list = ar.list,
+		  ma.list = ma.list, parameter.list = parameter.list, 
+		  margin.regressor.list = margin.regressor.list,
+		  margin.regressor.parameter.list = margin.regressor.parameter.list,
+		  copula = copula, margin.error.list = margin.error.list,
+		  margin.error.parameter.list = margin.error.parameter.list)
   
   # check mc parameters
   check.mc.parameters(nobs = nobs, niter = niter)
   
   # ma and ar terms
-  n.ar <- ifelse( !is.null(ar.list), sum(sapply(ar.list, sum)), 0 )
-  n.ma <- ifelse( !is.null(ma.list), sum(sapply(ma.list, sum)), 0 )
-  dim.model.covM <- nregressors - n.ar + nerrors - n.ma
+  n.ar <- ifelse( !is.null(ar.list), sum(sapply(ar.list, length)), 0 )
+  n.ma <- ifelse( !is.null(ma.list), sum(sapply(ma.list, length)), 0 )
+  n.mreg <- sum(sapply(margin.regressor.list, length))
+  n.merr <- sum(sapply(margin.error.list, length))
+  n.dim.cov <- n.mreg + n.merr
+  model.dim <- n.dim.cov + n.ar + n.ma
+  
   
   # form seed
   seeds <- form.seeds(seed)
@@ -35,10 +43,10 @@
   
   # covariance matrix
   if( is.null(model.covM) ) {
-    model.covM <- diag(1, dim.model.covM)
+    model.covM <- diag(1, model.dim)
   }
   else { # model.covM provided by user
-    if( nrow(model.covM) != ncol(model.covM) || nrow(model.covM) != dim.model.covM) {
+    if( nrow(model.covM) != ncol(model.covM) || nrow(model.covM) != model.dim) {
       stop("model.covM is not correctly specified. \nSpecify model.covM and call MCgmm() again. \n",
            call. = FALSE)
     }
@@ -102,14 +110,14 @@
   }
   
   # call C++ function to do the sampling 
-  sample <- .Call("MCgmm_cc", gmm.fun, env.gmm.fun, 
+  sample <- .Call("MCgmm_cc", as.list(gmm.fun), as.list(env.gmm.fun), 
                   as.list(parameter.list), as.list(margin.regressor.list),
 				  as.list(margin.error.list),
 				  as.list(ar.list), as.list(ma.list),
                   as.integer(nobs), as.integer(niter),
                   as.matrix(model.covM), as.integer(verbose), 
                   as.integer(n.ar), as.integer(n.ma),
-                  as.integer(dim.model.covM),
+                  as.integer(model.dim),
                   lecuyer = as.integer(lecuyer), 
                   seed.array = as.integer(seed.array),
                   lecuyer.stream = as.integer(lecuyer.stream))

@@ -79,7 +79,7 @@ void MCgmm_impl (rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
 extern "C" {
 
    SEXP MCgmm_cc(SEXP fun, SEXP myframe,
-		   SEXP parameterList_R, SEXP margin_regList_r,
+		   SEXP parameterList_R, SEXP margin_regList_R,
 		   SEXP margin_errList_R, SEXP arList_R, SEXP maList_R,
 		   SEXP nobs_R, SEXP niter_R,
 		   SEXP covM_R, SEXP verbose, SEXP ar_R, SEXP ma_R,
@@ -99,7 +99,7 @@ extern "C" {
 	   double* covM_data = REAL(covM_R);
 	   const int covM_nr = nrows(covM_R);
 	   const int covM_nc = ncols(covM_R);
-	   Matrix <> covM (covM_nc, covM_nr, covM_data);
+	   Matrix<> covM (covM_nc, covM_nr, covM_data);
 	   
 	   const unsigned int nmodels = length(parameterList_R);
 	   const unsigned int niter = niter;
@@ -115,7 +115,7 @@ extern "C" {
 	   }
 	   
 	   MCPKG_PASSRNG2MODEL(MCgmm_impl, fun, myframe, parameterList_R,
-			   margin_regList_r, margin_errList_R,
+			   margin_regList_R, margin_errList_R,
 			   arList_R, maList_R, INTEGER(nobs_R)[0], INTEGER(niter_R)[0],
 			   INTEGER(ar_R)[0], INTEGER(ma_R)[0], INTEGER(verbose)[0],
 			   covM, sample_SEXP);

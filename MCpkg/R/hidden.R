@@ -105,9 +105,19 @@
 }
 
 "check.mc.input" <- function(fun = NULL, formula = NULL, ar.list, ma.list, 
-                             parameter.list, nregressors, margin.error.list, 
-                             margin.regressor.list) {
+                             parameter.list, margin.regressor.list, 
+							 margin.regressor.parameter.list, copula,
+							 margin.error.list, margin.error.parameter.list) {
+						 
+  sum.parameter <- ifelse( !is.null(parameter.list), sum(sapply(parameter.list, length)), 0)
+  sum.ar <- ifelse( !is.null(ar.list), sum(sapply(ar.list, length)), 0)
+  sum.ma <- ifelse( !is.null(ma.list), sum(sapply(ma.list, length)), 0)
+  sum.mreg <- ifelse( !is.null(margin.regressor.list), sum(sapply(margin.regressor.list, length)), 0)
+  sum.merr <- ifelse( !is.null(margin.error.list), sum(sapply(margin.error.list, length)), 0)
+  sum.mreg.par <- ifelse( !is.null(margin.error.parameter.list), sum(sapply(margin.regressor.parameter.list, length)), 0)
+  sum.merr.par <- ifelse( !is.null(margin.regressor.parameter.list), sum(sapply(margin.error.parameter.list, length)), 0)
   
+  model.dim <- sum.ar + sum.ma + sum.mreg + sum.merr
   
   if ( is.null(fun) && is.null(formula) ) {
     cat("Error: no function specified. \n")
@@ -119,31 +129,40 @@
     stop("Respecify parameters and call ", calling.function(), " again. \n",
          call. = FALSE)
   }
+  
   if( !all(sapply(parameter.list, is.numeric)) ) {
     cat("Error: parameters are not of type numeric. \n")
     stop("Check input and call ", calling.function(), " again. \n",
          call. = FALSE)
   }
-  if( is.null(nregressors) ) {
-    cat("Error: no number of regressors specified. \n")
+  
+  # parameter vector lengths must be equal to the number of regressors
+  if( sum.parameter != model.dim) {
+    cat("Error: number of regressors and number of parameters differ. \n")
     warning("Check model and call ", calling.function(), " again. \n")
   } 
-  if( !is.null(ar.list) && all(sapply(lapply(ar.list, is.element, c(0,1,-1)), all)) ) {
+  
+  # check if ar and ma lists contain only whole numbers
+  r.ar <- sapply(ar.list, round)
+  if( !is.null(ar.list) && !isTRUE(all.equal(ar.list, r.ar)) ) {
     cat("Error: Autoregressive process wrongly specified. \n")
-    stop("ar must be a vector of zeros and/or +/- 1. \nCheck ar and call ", calling.function(), " again. \n",
+    stop("ar.list must be a list of whole numbers. \nCheck ar.list and call ", calling.function(), " again. \n",
          call. = FALSE)
   }
-  if( !is.null(ma.list) && all(sapply(lapply(ma.list, is.element, c(0,1,-1)), all)) ) {
-    cat("Error: Moving average process wrongly specified. \n")
-    stop("ma must be a vector of zeros and/or +/- 1. \nCheck ma and call ", calling.function(), " again. \n",
+  r.ma <- sapply(ma.list, round)
+  if( !is.null(ma.list) && !isTRUE(all.equal(ma.list, r.ma)) ) {
+    cat("Error: moving average process wrongly specified. \n")
+    stop("ma.list must be a list of whole numbers. \nCheck ma.list and call ", calling.function(), " again. \n",
          call. = FALSE)
   }
+  
   if ( is.null(margin.error.list) ) {
 	  cat("Error: at least one generating function for an error term has to be specified. \n")
-	  stop("Specify a random number function and call ", calling.function(), " agqain\n", 
+	  stop("Specify a random number function and call ", calling.function(), " again\n", 
 			  call. = FALSE)
   }
   
+  # check if margin lists are correctly specified
   choices <- c("qnorm", "qunif", "qgamma", "qbeta", "qlnorm", "qchisq", 
 		  "qnchisq", "qf", "qt", "qbinom", "qcauchy", "qexp", "qgeom",
 		  "qhyper", "qnbinom", "qpois", "qweibull", "qlogis", "qnbeta",
@@ -152,21 +171,29 @@
   try(res <- sapply(margin.error.list, match.arg, choices), silent = TRUE)
   
   if( is.null(res) ) {
-    cat("Error: Generating function does not exist. \n")
-    stop("At least one marginal function of margin.error.list, does not exist. \nCheck random number generators and call ", calling.function(), " again. \n",
-         call. = FALSE)
-  } 
-  if ( is.null(margin.regressor.list) ) {
-	  cat("Warning: the simulation will be run with error term(s) only. \n")
-	  warnings("GMM function could behave strangly.\n")
+	  cat("Error: generating function does not exist. \n")
+	  stop("at least one marginal function of margin.regressor.list does not exist. \nCheck random number generators and call ", calling.function(), " again. \n",
+			  .call = FALSE)
+  }
+  
+  if( is.null(margin.error.list) ) {
+	  cat("Error: at least one error term has to be specified. \n")
+	  stop("specify error term(s) and call ", calling.function(), " again. \n", 
+			  call. = FALSE)
   }
   
   res <- NULL
   try(res <- sapply(margin.regressor.list, match.arg, choices), silent = TRUE)
   
   if( is.null(res) ) {
-    cat("Error: Generating function does not exist. \n")
-    stop("At least one marginal function of margin.regressor.list does not exist. \nCheck random number generators and call ", calling.function(), " again. \n",
-         .call = FALSE)
+    cat("Error: generating function does not exist. \n")
+    stop("at least one marginal function of margin.error.list, does not exist. \nCheck random number generators and call ", calling.function(), " again. \n",
+         call. = FALSE)
+  } 
+  if ( is.null(margin.regressor.list) ) {
+	  cat("Warning: the simulation will be run with error term(s) only. \n")
+	  warnings("this could result in unpredictable behavior of user-specified functions.\n")
   }
+  
+  
 }
