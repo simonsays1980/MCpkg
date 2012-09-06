@@ -16,8 +16,8 @@
                     nobs = 1000, niter = 1000, ...) {
   
   # check mc input 
-  check.mc.input(fun = fun, formula = NULL, ar.list = ar.list, ma.list = ma.list, nregressor = nregressors,
-                 margin.error.list = margin.error.list, margin.regressor.list = margin.regressor.list)
+  check.mc.input(fun = fun, formula = NULL, ar.list = ar.list, ma.list = ma.list, parameter.list = parameter.list, 
+		  nregressor = nregressors, margin.error.list = margin.error.list, margin.regressor.list = margin.regressor.list)
   
   # check mc parameters
   check.mc.parameters(nobs = nobs, niter = niter)

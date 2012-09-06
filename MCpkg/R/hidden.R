@@ -118,7 +118,7 @@
     stop("Respecify parameters and call ", calling.function(), " again. \n",
          call. = FALSE)
   }
-  if( !is.numeric(parameter.list) ) {
+  if( !all(sapply(parameter.list, is.numeric)) ) {
     cat("Error: parameters are not of type numeric. \n")
     stop("Check input and call ", calling.function(), " again. \n",
          call. = FALSE)
