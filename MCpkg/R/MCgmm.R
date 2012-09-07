@@ -110,9 +110,12 @@
   }
   
   # call C++ function to do the sampling 
-  sample <- .Call("MCgmm_cc", as.list(gmm.fun), as.list(env.gmm.fun), 
+  sample <- .Call("MCgmm_cc", gmm.fun, env.gmm.fun, 
                   as.list(parameter.list), as.list(margin.regressor.list),
+				  as.list(margin.error.parameter.list),
 				  as.list(margin.error.list),
+				  as.list(margin.error.parameter.list),
+				  as.character(copula),
 				  as.list(ar.list), as.list(ma.list),
                   as.integer(nobs), as.integer(niter),
                   as.matrix(model.covM), as.integer(verbose), 

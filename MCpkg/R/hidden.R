@@ -145,7 +145,7 @@
   # check if ar and ma lists contain only whole numbers
   r.ar <- sapply(ar.list, round)
   if( !is.null(ar.list) && !isTRUE(all.equal(ar.list, r.ar)) ) {
-    cat("Error: Autoregressive process wrongly specified. \n")
+    cat("Error: autoregressive process wrongly specified. \n")
     stop("ar.list must be a list of whole numbers. \nCheck ar.list and call ", calling.function(), " again. \n",
          call. = FALSE)
   }
@@ -168,11 +168,12 @@
 		  "qhyper", "qnbinom", "qpois", "qweibull", "qlogis", "qnbeta",
 		  "qnf", "qnt", "qtukey", "qwilcox", "qsignrank")
   res <- NULL
-  try(res <- sapply(margin.error.list, match.arg, choices), silent = TRUE)
+  try(res <- mapply(function(i) sapply(margin.error.list[[i]], match.arg, choices), 
+				  seq(along=margin.error.list)), silent = TRUE)
   
   if( is.null(res) ) {
 	  cat("Error: generating function does not exist. \n")
-	  stop("at least one marginal function of margin.regressor.list does not exist. \nCheck random number generators and call ", calling.function(), " again. \n",
+	  stop("at least one marginal function of margin.error.list does not exist. \nCheck random number generators and call ", calling.function(), " again. \n",
 			  .call = FALSE)
   }
   
@@ -183,11 +184,12 @@
   }
   
   res <- NULL
-  try(res <- sapply(margin.regressor.list, match.arg, choices), silent = TRUE)
+  try(res <- mapply(function(i) sapply(margin.regressor.list[[i]], match.arg, choices), 
+				  seq(along=margin.regressor.list)), silent = TRUE)
   
   if( is.null(res) ) {
     cat("Error: generating function does not exist. \n")
-    stop("at least one marginal function of margin.error.list, does not exist. \nCheck random number generators and call ", calling.function(), " again. \n",
+    stop("at least one marginal function of margin.regressor.list, does not exist. \nCheck random number generators and call ", calling.function(), " again. \n",
          call. = FALSE)
   } 
   if ( is.null(margin.regressor.list) ) {
