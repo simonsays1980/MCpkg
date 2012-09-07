@@ -12,6 +12,7 @@
 
 #include <R.h>           // needed to use Rprintf()
 #include <R_ext/Utils.h> // needed to allow user interrupts
+#include <Rmath.h>
 
 #include <Rdefines.h>
 #include <Rinternals.h>  // defines handling of R objects from C
