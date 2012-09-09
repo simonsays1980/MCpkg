@@ -21,6 +21,7 @@
 using namespace std;
 using namespace scythe;
 
+
 double user_fun_gmm(SEXP fun, SEXP par, SEXP myframe) {
 	
 	SEXP R_fcall;
@@ -41,15 +42,68 @@ double user_fun_gmm(SEXP fun, SEXP par, SEXP myframe) {
 	
 }
 
+/*double user_fun_quantile(SEXP fun, SEXP args, SEXP myframe) {
+
+	SEXP R_fcall;
+	if(!isFunction(fun)) error("`fun' must be a function");
+	if(!isEnvironment(myframe)) error("`myframe' must be an environment");
+
+	SEXP docall;
+	PROTECT(docall = mkChar("do.call"));
+	PROTECT(R_fcall = lang3(docall, args, R_NilValue));
+	SEXP funval;
+	PROTECT(funval = eval(R_fcall, myframe));
+
+	if(!isReal(funval)) error("`fun' must return a double");
+	double fv = REAL(funval)[0];
+	if (fv == R_PosInf || fv == R_NegInf) error("`fun' returned +/- Inf");
+	if (R_IsNaN(fv) || R_IsNA(fv)) error("`fun' returned NaN or NA");
+	UNPROTECT(3);
+	return fv;
+
+}*/
+
+double user_fun_quantile(SEXP expr, SEXP val, SEXP args, SEXP env) {
+
+	SEXP fnamec;
+	unsigned int n = length(args);
+	PROTECT(fnamec = expr = allocList(n + 2));
+	SET_TYPEOF(fnamec, LANGSXP);
+	SETCAR(fnamec, expr);
+	fnamec = CDR(fnamec);
+	SETCAR(fnamec, val);
+	fnamec = CDR(fnamec);
+	Rprintf("I am here: line 76 \n");
+    for(unsigned int i = 0; i < n; ++i) {
+    	SETCAR(fnamec, VECTOR_ELT(args, i));
+    }
+    Rprintf("I am here: line 80 \n");
+    SEXP funval;
+    SEXP call;
+    PROTECT(funval = eval(fnamec, env));
+    PROTECT(funval = eval(call, env));
+    Rprintf("I am here: line 84 \n");
+
+    double fv = REAL(call)[0];
+    Rprintf("I am here: line 86 \n");
+    if(fv == R_PosInf || fv == R_NegInf) error("'quantile function' returned +/- Inf");
+    if(R_IsNaN(fv) || R_IsNA(fv)) error("quantile function' returned NaN or NA");
+    UNPROTECT(3);
+    return fv;
+
+}
+
 template<typename RNGTYPE>
 void MCgmm_impl (rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
 		         SEXP& parlist, SEXP& mreglist, SEXP& merrlist,
+		         SEXP& mregparlist,
 		         SEXP& arlist, SEXP& malist,
 		         const unsigned int nobs, const unsigned int niter,
 		         const unsigned int nar, const unsigned int nma,
 		         const unsigned int verbose, const Matrix<>& covM,
 		         SEXP& sample_SEXP)
 {
+
 	// define constants 
 	const unsigned int nmodels = length(parlist);
 	const unsigned int npar = length(VECTOR_ELT(parlist,0));
@@ -63,19 +117,47 @@ void MCgmm_impl (rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
 	Rprintf("rows covM: %i \n", covM.rows());
 
 	// THE MONTE CARLO SAMPLING
-	for (unsigned int m = 0; m < nmodels; ++m) { // models
+	for ( unsigned int m = 0; m < nmodels; ++m ) { // models
 
 		// initialize matrix to hold the sample of estimated parameters
 		Matrix<> sample_par(niter, npar, false);
+		unsigned int narg = length(VECTOR_ELT(VECTOR_ELT(mregparlist, m), 0));
+
+		// assign lists of margins and margin parameters
+		SEXP sample_mrpList;
+		PROTECT(sample_mrpList = allocVector(VECSXP, narg));
+        sample_mrpList = VECTOR_ELT(mregparlist, m);
+        SEXP sample_mrList;
+        PROTECT(sample_mrList = allocVector(VECSXP, narg));
+        sample_mrList = VECTOR_ELT(mreglist, m);
 
 		for (unsigned int i = 0; i < niter; ++i) { // iterations
 
             // sample the copula
 			Matrix<> sample_copV = stream.rmvnorm(mu, covM);
+
 			Rprintf("rows sample_copV: %i \n", sample_copV.rows());
 			Rprintf("cols sample_copV: %i \n", sample_copV.cols());
 			Rprintf("row %i: %10.5f\n", 1, sample_copV(0,0));
+
+            SEXP rval;
+            PROTECT(rval = ScalarReal(sample_copV(0,0)));
+            SEXP args;
+            /*PROTECT(args = allocVector(REALSXP, narg));*/
+            PROTECT(args = allocVector(VECSXP, narg));
+            unsigned int nmpar = length(VECTOR_ELT(sample_mrpList, 0));
+            for(unsigned int a = 0; a < nmpar; ++a) {
+            	SET_VECTOR_ELT(args, a, VECTOR_ELT(sample_mrpList, 0))[a];
+            	/*REAL(args)[a] = REAL(VECTOR_ELT(sample_mrpList, 0))[a];*/
+            }
+            Rprintf("I am here: line 148");
+            SEXP qfun;
+            PROTECT(qfun = VECTOR_ELT(mreglist, 0));
+            double quantile = user_fun_quantile(qfun, rval, args, myframe);
+            UNPROTECT(3);
+
 		}
+		UNPROTECT(2);
 	}
 
 
@@ -116,16 +198,16 @@ extern "C" {
 	   PROTECT(sample_SEXP = allocVector(VECSXP, nmodels)); //TODO: Consider to add diagnostics
 	   for (unsigned int m = 0; m < nmodels; ++m) {
 		   SEXP sample_vec_SEXP;
-		   PROTECT(sample_vec_SEXP = allocMatrix(REALSXP, niter, npar));
+		   sample_vec_SEXP = allocMatrix(REALSXP, niter, npar); // TODO: Make sure all elements of the list are protected
            SET_VECTOR_ELT(sample_SEXP, m, sample_vec_SEXP);
 	   }
 	   
 	   MCPKG_PASSRNG2MODEL(MCgmm_impl, fun, myframe, parameterList_R,
-			   margin_regList_R, margin_errList_R,
+			   margin_regList_R, margin_errList_R, margin_reg_parList_R,
 			   arList_R, maList_R, INTEGER(nobs_R)[0], INTEGER(niter_R)[0],
 			   INTEGER(ar_R)[0], INTEGER(ma_R)[0], INTEGER(verbose)[0],
 			   covM, sample_SEXP);
-	   UNPROTECT(1 + nmodels);
+	   UNPROTECT(1);
        Rprintf("I am at the end");
 	   // return the sample of parameters
        return sample_SEXP;

@@ -112,7 +112,7 @@
   # call C++ function to do the sampling 
   sample <- .Call("MCgmm_cc", gmm.fun, env.gmm.fun, 
                   as.list(parameter.list), as.list(margin.regressor.list),
-				  as.list(margin.error.parameter.list),
+				  as.list(margin.regressor.parameter.list),
 				  as.list(margin.error.list),
 				  as.list(margin.error.parameter.list),
 				  as.character(copula),

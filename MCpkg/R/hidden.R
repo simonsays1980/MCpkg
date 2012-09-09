@@ -104,18 +104,18 @@
   
 }
 
-"check.mc.input" <- function(fun = NULL, formula = NULL, ar.list, ma.list, 
-                             parameter.list, margin.regressor.list, 
-							 margin.regressor.parameter.list, copula,
-							 margin.error.list, margin.error.parameter.list) {
+"check.mc.input" <- function(fun = NULL, formula = NULL, ar.list = NULL, ma.list = NULL, 
+                             parameter.list = NULL, margin.regressor.list = NULL, 
+							 margin.regressor.parameter.list = NULL, copula = NULL,
+							 margin.error.list = NULL, margin.error.parameter.list = NULL) {
 						 
   sum.parameter <- ifelse( !is.null(parameter.list), sum(sapply(parameter.list, length)), 0)
   sum.ar <- ifelse( !is.null(ar.list), sum(sapply(ar.list, length)), 0)
   sum.ma <- ifelse( !is.null(ma.list), sum(sapply(ma.list, length)), 0)
   sum.mreg <- ifelse( !is.null(margin.regressor.list), sum(sapply(margin.regressor.list, length)), 0)
   sum.merr <- ifelse( !is.null(margin.error.list), sum(sapply(margin.error.list, length)), 0)
-  sum.mreg.par <- ifelse( !is.null(margin.error.parameter.list), sum(sapply(margin.regressor.parameter.list, length)), 0)
-  sum.merr.par <- ifelse( !is.null(margin.regressor.parameter.list), sum(sapply(margin.error.parameter.list, length)), 0)
+  sum.mreg.par <- ifelse( !is.null(margin.error.parameter.list), sum(sapply(margin.error.parameter.list, length)), 0)
+  sum.merr.par <- ifelse( !is.null(margin.regressor.parameter.list), sum(sapply(margin.regressor.parameter.list, length)), 0)
   
   model.dim <- sum.ar + sum.ma + sum.mreg + sum.merr
   
