@@ -1,5 +1,6 @@
 useDynLib(MCpkg)
 exportPattern("^[[:alpha:]]+")
 
-export(MCgmm
+export(
+       MCgmmS
 )
