@@ -20,12 +20,13 @@
 #include <R.h>           // needed to use Rprintf()
 #include <R_ext/Utils.h> // needed to allow user interrupts
 #include <Rmath.h>
-
+#undef pnorm
 #include <Rdefines.h>
 #include <Rinternals.h>  // defines handling of R objects from C
 
 
-using namespace std;
+//using namespace std;
+
 
 double user_fun_gmms(SEXP fun, SEXP par, SEXP myframe) {
 
@@ -57,7 +58,8 @@ void MCgmmS_impl(rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
 	Matrix<> sample_copula(2,1);
 	Matrix<> sample_u(2,1);
 
-	for(unsigned int o = 0; o < nobs; ++o) {
+    #pragma omp parallel for
+	for(int o = 0; o < nobs; ++o) {
 
         sample_copula = stream.rmvnorm(mu, covM);
         sample_u = scythe::pnorm(sample_copula, 0, 1);

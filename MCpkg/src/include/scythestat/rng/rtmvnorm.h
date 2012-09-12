@@ -32,11 +32,11 @@
 #include <cmath>
 
 #ifdef SCYTHE_COMPILE_DIRECT
-#include "matrix.h"
-#include "rng.h"
-#include "error.h"
-#include "algorithm.h"
-#include "ide.h"
+#include "../matrix.h"
+#include "../rng.h"
+#include "../error.h"
+#include "../algorithm.h"
+#include "../ide.h"
 #else
 #include "scythestat/matrix.h"
 #include "scythestat/rng.h"

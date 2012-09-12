@@ -73,7 +73,7 @@
 #define SCYTHE_MERSENNE_H
 
 #ifdef SCYTHE_COMPILE_DIRECT
-#include "rng.h"
+#include "../rng.h"
 #else
 #include "../rng.h"
 #endif

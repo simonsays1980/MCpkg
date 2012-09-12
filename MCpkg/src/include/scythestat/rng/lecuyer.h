@@ -60,7 +60,7 @@
 #include<string>
 
 #ifdef SCYTHE_COMPILE_DIRECT
-#include "rng.h"
+#include "../rng.h"
 #else
 #include "../rng.h"
 #endif

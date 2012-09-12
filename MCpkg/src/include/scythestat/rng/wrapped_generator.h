@@ -33,7 +33,7 @@
 #define SCYTHE_WRAPPED_GENERATOR_H
 
 #ifdef SCYTHE_COMPILE_DIRECT
-#include "rng.h"
+#include "../rng.h"
 #else
 #include "scythestat/rng.h"
 #endif
