@@ -23,6 +23,7 @@
 #undef pnorm
 #include <Rdefines.h>
 #include <Rinternals.h>  // defines handling of R objects from C
+#include <omp.h>
 
 
 //using namespace std;
@@ -58,7 +59,7 @@ void MCgmmS_impl(rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
 	Matrix<> sample_copula(2,1);
 	Matrix<> sample_u(2,1);
 
-    #pragma omp parallel for
+/*    #pragma omp parallel for
 	for(int o = 0; o < nobs; ++o) {
 
         sample_copula = stream.rmvnorm(mu, covM);
@@ -66,14 +67,30 @@ void MCgmmS_impl(rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
         variables(o, 1) = qbinom(sample_u(0,0), 1, 0.5, 1, 0);
         if(variables(o, 1) == 0) variables(o, 1) = -1;
         variables(o, 2) = qnorm(sample_u(1,0), 0, 1, 1, 0);
+        Rprintf("Number of threads: %i", omp_get_thread_num());
+	}*/
+    int* n;
+    *n = 2;
+	int th_id, nthreads;
+	omp_set_num_threads(*n);
+
+	#pragma omp parallel private(th_id)
+	{
+	  th_id = omp_get_thread_num();
+	  Rprintf("Hello World from thread %d\n", th_id);
+	  #pragma omp barrier
+	  if ( th_id == 0 ) {
+	    nthreads = omp_get_num_threads();
+	    Rprintf("There are %d threads\n", nthreads);
+	  }
 	}
 
 	// put matrix into sample_SEXP
-	for (unsigned int i = 0; i < nobs; ++i) {
+	/*for (unsigned int i = 0; i < nobs; ++i) {
 	    for (unsigned int j = 0; j < 4; ++j) {
 	      REAL(sample_SEXP)[i + nobs * j] = variables(i,j);
 	    }
-	}
+	}*/
 
 }
 extern "C" {
