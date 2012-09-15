@@ -26,6 +26,7 @@
 #include <omp.h>
 
 
+
 //using namespace std;
 
 
@@ -54,43 +55,35 @@ void MCgmmS_impl(rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
 		const unsigned int niter, const unsigned int nobs,
 		const Matrix<>& par, const Matrix<>& covM, SEXP& sample_SEXP) {
 
-	Matrix<> mu(2, 1);
-	Matrix<> variables(nobs, 4);
+	Matrix<> mu(3, 1);
+	Matrix<> variables(nobs, 3);
 	Matrix<> sample_copula(2,1);
-	Matrix<> sample_u(2,1);
+	Matrix<> sample_u(3,1);
 
-/*    #pragma omp parallel for
-	for(int o = 0; o < nobs; ++o) {
+
+	for(unsigned int o = 0; o < nobs; ++o) {
 
         sample_copula = stream.rmvnorm(mu, covM);
         sample_u = scythe::pnorm(sample_copula, 0, 1);
-        variables(o, 1) = qbinom(sample_u(0,0), 1, 0.5, 1, 0);
-        if(variables(o, 1) == 0) variables(o, 1) = -1;
-        variables(o, 2) = qnorm(sample_u(1,0), 0, 1, 1, 0);
-        Rprintf("Number of threads: %i", omp_get_thread_num());
-	}*/
-    int* n;
-    *n = 2;
-	int th_id, nthreads;
-	omp_set_num_threads(*n);
-
-	#pragma omp parallel private(th_id)
-	{
-	  th_id = omp_get_thread_num();
-	  Rprintf("Hello World from thread %d\n", th_id);
-	  #pragma omp barrier
-	  if ( th_id == 0 ) {
-	    nthreads = omp_get_num_threads();
-	    Rprintf("There are %d threads\n", nthreads);
-	  }
+        variables(o, 0) = qbinom(sample_u(0,0), 1, 0.5, 1, 0);
+        if(variables(o, 0) == 0) variables(o, 0) = -1;
+        variables(o, 1) = qnorm(sample_u(1,0), 0, 1, 1, 0);
+        variables(o, 2) = qnorm(sample_u(2,0), 0, 1, 1, 0);
 	}
 
+	Matrix<> sample(nobs - 1, 4);
+	sample(_, 1) = variables(0, 0, nobs - 2, 0);
+	sample(_, 2) = variables(1, 0, nobs - 1, 0);
+	/*sample(0, 3, nobs - 2, 3) = variables(0, 1, nobs - 2, 1) + variables(0, 2, nobs -2, 2) - variables(1, 2, nobs - 1, 2);
+    sample(0, 0, nobs - 2, 0) = sample(0, 1, nobs - 2, 1) * (par(0,0) + par(1,0)) + sample(0, 2, nobs - 2, 2) * (par(0,0)
+    		+ par(2,0) * par(1,0)) + sample(0, 3, nobs - 2, 3);*/
+
 	// put matrix into sample_SEXP
-	/*for (unsigned int i = 0; i < nobs; ++i) {
+	for (unsigned int i = 0; i < (nobs - 1); ++i) {
 	    for (unsigned int j = 0; j < 4; ++j) {
-	      REAL(sample_SEXP)[i + nobs * j] = variables(i,j);
+	      REAL(sample_SEXP)[i + (nobs - 1) * j] = sample(i,j);
 	    }
-	}*/
+	}
 
 }
 extern "C" {
@@ -110,6 +103,7 @@ extern "C" {
  	   const unsigned int npar = length(parameters_R);
  	   const unsigned int niter = INTEGER(niter_R)[0];
  	   const unsigned int nobs = INTEGER(nobs_R)[0];
+ 	   const unsigned int nobs_intern = nobs + 1;
 
  	    // put covM_R into a Matrix
        double* covM_data = REAL(covM_R);
@@ -124,9 +118,9 @@ extern "C" {
        Matrix<> par (par_nr, par_nc, par_data);
 
        SEXP sample_SEXP;
-       PROTECT(sample_SEXP = allocMatrix(REALSXP, nobs, 4));
+       PROTECT(sample_SEXP = allocMatrix(REALSXP, nobs_intern, 4));
 
-       MCPKG_PASSRNG2MODEL(MCgmmS_impl, fun, myframe, niter, nobs, par,
+       MCPKG_PASSRNG2MODEL(MCgmmS_impl, fun, myframe, niter, nobs_intern, par,
     		   covM, sample_SEXP);
        UNPROTECT(1);
 
