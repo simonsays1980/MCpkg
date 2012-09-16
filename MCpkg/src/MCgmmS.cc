@@ -14,6 +14,7 @@
 #include "include/scythestat/la.h"
 #include "include/scythestat/ide.h"
 #include "include/scythestat/smath.h"
+#include "include/scythestat/optimize.h"
 #include "MCfcds.h"
 #include "MCrng.h"
 
@@ -71,12 +72,16 @@ void MCgmmS_impl(rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
         variables(o, 2) = qnorm(sample_u(2,0), 0, 1, 1, 0);
 	}
 
-	Matrix<> sample(nobs - 1, 4);
+	// construct the sample
+	Matrix<> sample(1000, 4);
 	sample(_, 1) = variables(0, 0, nobs - 2, 0);
 	sample(_, 2) = variables(1, 0, nobs - 1, 0);
-	/*sample(0, 3, nobs - 2, 3) = variables(0, 1, nobs - 2, 1) + variables(0, 2, nobs -2, 2) - variables(1, 2, nobs - 1, 2);
+	sample(0, 3, nobs - 2, 3) = variables(0, 1, nobs - 2, 1) + variables(0, 2, nobs -2, 2) - variables(1, 2, nobs - 1, 2);
     sample(0, 0, nobs - 2, 0) = sample(0, 1, nobs - 2, 1) * (par(0,0) + par(1,0)) + sample(0, 2, nobs - 2, 2) * (par(0,0)
-    		+ par(2,0) * par(1,0)) + sample(0, 3, nobs - 2, 3);*/
+    		+ par(2,0) * par(1,0)) + sample(0, 3, nobs - 2, 3);
+
+    // GMM method
+    Matrix<> bfgs_res = scythe::BFGS(user_fun_gmms, par, stream, 100, 1e-5);
 
 	// put matrix into sample_SEXP
 	for (unsigned int i = 0; i < (nobs - 1); ++i) {
@@ -118,7 +123,7 @@ extern "C" {
        Matrix<> par (par_nr, par_nc, par_data);
 
        SEXP sample_SEXP;
-       PROTECT(sample_SEXP = allocMatrix(REALSXP, nobs_intern, 4));
+       PROTECT(sample_SEXP = allocMatrix(REALSXP, nobs, 4));
 
        MCPKG_PASSRNG2MODEL(MCgmmS_impl, fun, myframe, niter, nobs_intern, par,
     		   covM, sample_SEXP);
