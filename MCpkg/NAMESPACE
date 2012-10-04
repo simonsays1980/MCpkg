@@ -2,5 +2,9 @@ useDynLib(MCpkg)
 exportPattern("^[[:alpha:]]+")
 
 export(
-       MCgmmS
+       MCgmmS,
+       meat,
+       bread,
+       NeweyWest,
+       gmmfun
 )

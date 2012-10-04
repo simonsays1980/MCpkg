@@ -18,7 +18,9 @@
 	env.gmm.fun <- environment(fun = gmm.fun)
 	
 	
-	.Call("MCgmmS_cc", fun, env.gmm.fun, as.double(parameters), as.integer(niter), 
+	sample <- .Call("MCgmmS_cc", fun, env.gmm.fun, as.double(parameters), as.integer(niter), 
 			as.integer(nobs), as.matrix(covM), as.integer(lecuyer), 
 			as.integer(seed.array), as.integer(lecuyer.stream));
+	
+	sample
 } 
