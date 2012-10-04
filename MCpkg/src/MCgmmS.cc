@@ -244,18 +244,18 @@ void MCgmmS_impl(rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
 	moments.data_m = sample;
 	moments.moments_m = scythe::Matrix<>(sample.rows(), 3);
 	scythe::Matrix<> moments_m = moments(opt_par);
-	/*scythe::Matrix<> weightsNew = sandwich::meat(moments_m, true);
-	weightsNew = scythe::invpd(weightsNew);
+	weights_m = sandwich::meat(moments_m, true);
+	weights_m = scythe::invpd(weights_m);
 	init_par = opt_par;
-	obj_fun.weights_ = weightsNew;
-	opt_par = scythe::BFGS(obj_fun, init_par, stream, 100, 10e-6, false);*/
+	obj_fun.weights_ = weights_m;
+	opt_par = scythe::BFGS(obj_fun, init_par, stream, 100, 10e-6, false);
 
 	/* results */
 	Rprintf("Optimal par: \n\n");
 	Rprintf("phi: %10.5f\n", opt_par(0,0));
 	Rprintf("theta: %10.5f\n", opt_par(1,0));
 	Rprintf("rho: %10.5f\n", opt_par(2,0));
-	//moments.moments_m = moments(opt_par);
+	moments.moments_m = moments(opt_par);
 	moments_deriv momderiv;
 	momderiv.data_m = sample;
     scythe::Matrix<> neweyWestM = sandwich::NeweyWest(opt_par, moments_m, weights_m, momderiv);

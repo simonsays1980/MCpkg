@@ -13,7 +13,6 @@
 #include <scythestat/ide.h>
 #include <scythestat/la.h>
 #include <scythestat/optimize.h>
-#include <stdio.h>
 #include <cmath>
 #include <omp.h>
 #include <R.h>
@@ -28,7 +27,7 @@ namespace sandwich {
     scythe::Matrix<> computeWeights(const double&, const uint&);
     template<typename FUNCTOR>
     scythe::Matrix<> bread(const scythe::Matrix<>&, const scythe::Matrix<>&, const scythe::Matrix<>&, FUNCTOR);
-    scythe::Matrix<> meat(const scythe::Matrix<>&);
+    scythe::Matrix<> meat(const scythe::Matrix<>&, const bool);
 
 
     template<typename FUNCTOR>
@@ -39,8 +38,8 @@ namespace sandwich {
     	const uint npar = theta_v.rows();
     	scythe::Matrix<> neweyWest(npar, npar);
         scythe::Matrix<> bread_m = bread(theta_v, moments_m, weights_m, momderiv_f);
-    	neweyWest =  t(bread_m) * meat(moments_m) * bread_m;
-    	neweyWest = scythe::invpd(neweyWest);
+    	neweyWest =  invpd(t(bread_m) * scythe::invpd(meat(moments_m, true)) * bread_m);
+
 
     	return neweyWest * 1.0/nobs;
     }
@@ -60,8 +59,9 @@ namespace sandwich {
 			momderiv_m += momderiv_f(theta_v, j);
 		}
 
-		momderiv_m*= 1.0/nobs;
-		bread_m = weights_m * momderiv_m * scythe::invpd(t(momderiv_m) * weights_m * momderiv_m);
+		momderiv_m*= 1.0/(nobs - 3);
+		//bread_m = weights_m * momderiv_m * scythe::invpd(t(momderiv_m) * weights_m * momderiv_m);
+        bread_m = momderiv_m;
 
         return bread_m;
     }
@@ -85,18 +85,18 @@ namespace sandwich {
     		scythe::Matrix<> ones = scythe::ones(nobs, 1);
     		demean_m = moments_m - ones * means;
     	}
-    	meat_m = t(demean_m) * demean_m * 0.5;
+    	meat_m = t(demean_m) * demean_m * 0.5 * weights(0,0);
     	scythe::Matrix<> zero_m(nmom, nmom);
 
     	if(weights.rows() > 1) {
-    		for(uint i = 0; i < weights.cols(); ++i) {
+    		for(uint i = 1; i < weights.cols(); ++i) {
     			meat_m += weights(i, 0) * t(demean_m(0, 0, nobs - i - 1, nmom - 1)) * demean_m(i, 0, nobs - 1, nmom - 1);
     		}
     	}
 
     	meat_m += t(meat_m);
     	meat_m *= 1.0 / nobs;
-    	meat_m = scythe::invpd(meat_m);
+    	//meat_m = scythe::invpd(meat_m);
 
     	return meat_m;
     }
