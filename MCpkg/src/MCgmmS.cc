@@ -22,17 +22,12 @@
 #include <R.h>           // needed to use Rprintf()
 #include <R_ext/Utils.h> // needed to allow user interrupts
 #include <Rmath.h>
-#undef pnorm // for name mangling with scythe: Rmath is C and does not know namespaces
+#undef pnorm // for name mangling with scythe: Rmath is C and does not know namespaces but only definitions
 #include <Rdefines.h>
 #include <Rinternals.h>  // defines handling of R objects from C
 #include <omp.h>
 
-
-
-//using namespace std;
-
-
-scythe::Matrix<> user_fun_gmms(SEXP fun, SEXP par, SEXP data, SEXP myframe) {
+scythe::Matrix<> user_fun_gmmsR(SEXP fun, SEXP par, SEXP data, SEXP myframe) {
 
 	SEXP R_fcall;
 	if(!isFunction(fun)) error("`fun' must be a function");
@@ -64,7 +59,7 @@ scythe::Matrix<> user_fun_gmms(SEXP fun, SEXP par, SEXP data, SEXP myframe) {
 
 }
 
-struct obj_fun_gmms {
+struct obj_fun_gmmsR {
 
 	// save the relevant model objects inside of the functor
 	scythe::Matrix<> moments_;
@@ -82,7 +77,7 @@ struct obj_fun_gmms {
 		for(unsigned int i = 0; i < theta.rows(); ++i) {
            REAL(par)[i] = theta(i, 0);
 		}
-		moments_ = user_fun_gmms(fun, par, data, env); // is (nobs x nmom)
+		moments_ = user_fun_gmmsR(fun, par, data, env); // is (nobs x nmom)
         for(unsigned int i = 0; i < moments_.rows(); ++i) {
         	moments_sum_ += t(moments_(i, scythe::_));
         }
@@ -111,18 +106,19 @@ struct obj_fun_gmms2 {
 	scythe::Matrix<> weights_;
 	scythe::Matrix<> residuals_;
 	double funv;
+	double tmp;
 
 
     double operator() (scythe::Matrix<> theta) {
 
-        residuals_ = data_(scythe::_, 0) - (theta(0,0) + theta(1,0)) * data_(scythe::_, 1) + (theta(0,0) + theta(2,0) * theta(1,0)) * data_(scythe::_, 2);
-
         double moment1, moment2, moment3 = 0;
+        omp_set_num_threads(2);
         #pragma omp parallel for reduction(+:moment1, moment2, moment3) schedule(dynamic)
         for(unsigned int i = 0; i < data_.rows(); ++i) {
-        	moment1 += data_(i, 1) * data_(i, 2) - data_(i, 1) * data_(i, 1) * theta(2,0);
-        	moment2 += residuals_(i) * data_(i, 1);
-        	moment3 += residuals_(i) * data_(i, 2);
+        	moment1 += data_(i, 2) * data_(i, 1) - data_(i, 1) * data_(i, 1) * theta(2,0);
+        	tmp = data_(i, 0) - (theta(0,0) + theta(1,0)) * data_(i, 1) + (theta(0,0) + theta(2,0) * theta(1,0)) * data_(i, 2);
+        	moment2 += tmp * data_(i, 1);
+            moment3 += tmp * data_(i, 2);
         }
         //Rprintf("moment1: %10.5f\t moment2: %10.5f\t moment3: %10.5f\n", moment1, moment2, moment3);
         moments_sum_(0,0) = moment1;
@@ -175,8 +171,8 @@ struct moments {
 
         #pragma omp parallel for schedule(dynamic)
 	    for(unsigned int i = 0; i < data_m.rows(); ++i) {
-		   moments_m(i, 0) = data_m(i, 1) * data_m(i, 2) - data_m(i, 1) * data_m(i, 1) * theta_v(2,0);
-		   tmp = data_m(i, 0) - (theta_v(0,0) + theta_v(1,0)) * data_m(i, 1) - (theta_v(0,0) + theta_v(2,0) * theta_v(1,0)) * data_m(i, 2);
+		   moments_m(i, 0) = data_m(i, 2) * data_m(i, 1) - data_m(i, 1) * data_m(i, 1) * theta_v(2,0);
+		   tmp = data_m(i, 0) - (theta_v(0,0) + theta_v(1,0)) * data_m(i, 1) + (theta_v(0,0) + theta_v(2,0) * theta_v(1,0)) * data_m(i, 2);
 		   moments_m(i, 1) = tmp * data_m(i, 1);
 		   moments_m(i, 2) = tmp * data_m(i, 2);
 
@@ -187,92 +183,197 @@ struct moments {
 };
 
 template<typename RNGTYPE>
-void MCgmmS_impl(rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
-		const unsigned int niter, const unsigned int nobs,
-		const Matrix<>& par, const Matrix<>& covM, SEXP& sample_SEXP) {
+void MCgmmS_impl(scythe::rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
+		const unsigned int niter, const unsigned int nobs_intern,
+		scythe::Matrix<>& par, const scythe::Matrix<>& covM, unsigned int verbose, SEXP& sample_SEXP, SEXP& parsample_SEXP) {
 
-	Matrix<> mu(3, 1);
-	Matrix<> variables(nobs, 3);
-	Matrix<> sample_copula(3,1);
-	Matrix<> sample_u(3,1);
+    /* define constants */
+	const unsigned int nobs = nobs_intern - 1;
+	const unsigned int npar = par.rows();
 
-	for(unsigned int o = 0; o < nobs; ++o) {
+	/* gnerate sample container */
+	scythe::Matrix<> pmatrix(niter, 16);
 
-        sample_copula = stream.rmvnorm(mu, covM);
-        sample_u = scythe::pnorm(sample_copula, 0, 1);
-        if(o == 0) {
-        	variables(o, 0) = qbinom(sample_u(0,0), 1, 0.5, 1, 0);
-        	if(variables(o, 0) == 0) variables(o, 0) = -1;
+	/* determine number of processors for OpenMP loop */
+	int nP = omp_get_num_procs();
+	Rprintf("\nOpenMP will use %i processors\n\n", nP);
+
+	/* compute Markov chain transition probability */
+    const double ptrans = (1 - par(2,0) * 1)/2;
+
+    /* generate pseudo-random number generator */
+    mersenne mc_rng;
+    mc_rng.initialize(1);
+
+    /*lecuyer mc_rng;
+    unsigned long start_seed_array[6] = {1,2,3,4,5,6};
+    mc_rng.SetPackageSeed(start_seed_array);*/
+
+    /* Monte Carlo sampler */
+    if (omp_get_dynamic())
+      omp_set_dynamic(0);
+    omp_set_num_threads(nP);
+    #pragma omp parallel for schedule(dynamic) shared(pmatrix) private(mc_rng)
+	for(unsigned int iter = 0; iter < niter; ++iter) {
+
+		/* set matrices */
+		scythe::Matrix<> mu(3, 1);
+		scythe::Matrix<> variables(nobs_intern, 3);
+		scythe::Matrix<> sample_copula(3,1);
+		scythe::Matrix<> sample_u(3,1);
+		scythe::Matrix<> dmid_m(nobs, 1);
+		scythe::Matrix<> explained_m(nobs, 1);
+		scythe::Matrix<> mean_m(1,3);
+
+		/* reset the pseudo-random number generator for no overlap */
+		mc_rng.initialize(1 + iter * nobs * 3);
+		/*if(iter != 0) {
+        unsigned long rseed = 12345 + iter * nobs * 3;
+        unsigned long rseed_array [6];
+        for(unsigned int i = 0; i < 6; ++i) {
+        	rseed_array[i] = rseed;
         }
-        else {
-        	if(sample_u(0,0) <= par(2,0)) variables(o, 0) = variables(o - 1, 0);
-        	else variables(o, 0) = variables(o - 1, 0) * (-1);
-        }
-        variables(o, 1) = qnorm(sample_u(1,0), 0, 1, 1, 0);
-        variables(o, 2) = qnorm(sample_u(2,0), 0, 1, 1, 0);
+        mc_rng.SetSeed(rseed_array);
+		}*/
+
+		for(unsigned int o = 0; o < nobs_intern; ++o) {
+
+			sample_copula = mc_rng.rmvnorm(mu, covM);
+			sample_u = scythe::pnorm(sample_copula, 0, 1);
+			if(o == 0) {
+				variables(o, 0) = qbinom(sample_u(0,0), 1, 0.5, 1, 0);
+				if(variables(o, 0) == 0) variables(o, 0) = -1;
+			}
+			else {
+				if(sample_u(0,0) <= (1 - ptrans)) variables(o, 0) = variables(o - 1, 0);
+				else variables(o, 0) = variables(o - 1, 0) * (-1);
+			}
+			variables(o, 1) = qnorm(sample_u(1,0), 0, par(3,0), 1, 0);
+			variables(o, 2) = qnorm(sample_u(2,0), 0, par(4,0), 1, 0);
+		}
+
+		/* construct the sample */
+		Matrix<> sample(nobs, 4);
+		sample(_, 1) = variables(0, 0, nobs_intern - 2, 0);
+		sample(_, 2) = variables(1, 0, nobs_intern - 1, 0);
+		sample(0, 3, nobs_intern - 2, 3) = variables(0, 1, nobs_intern - 2, 1) + variables(0, 2, nobs_intern -2, 2) - variables(1, 2, nobs_intern - 1, 2);
+		sample(0, 0, nobs_intern - 2, 0) = sample(0, 1, nobs_intern - 2, 1) * (par(0,0) + par(1,0)) - sample(0, 2, nobs_intern - 2, 2) * (par(0,0)
+				+ par(2,0) * par(1,0)) + sample(0, 3, nobs_intern - 2, 3);
+
+		/* construct price and midquote difference */
+        dmid_m = par(1,0) * sample(scythe::_, 2) + variables(0, 1, nobs - 1, 1);
+
+		/* put matrix into sample_SEXP */
+		/*if(iter == 0) {
+			for (unsigned int i = 0; i < nobs; ++i) {
+				for (unsigned int j = 0; j < 4; ++j) {
+				  REAL(sample_SEXP)[i + nobs * j] = sample(i,j);
+				}
+			}
+		}*/
+
+		// GMM two-step method:
+		/* first step */
+		scythe::Matrix<> init_par(3, 1);
+		init_par = 0.05, 0.05, 0.1;
+		scythe::Matrix<> weights_m = scythe::eye(3);
+		obj_fun_gmms2 obj_fun;
+		obj_fun.residuals_ = scythe::Matrix<>(nobs, 1);
+		obj_fun.data_ = sample;
+		obj_fun.moments_sum_ = scythe::Matrix<>(1, 3);
+		obj_fun.weights_ = weights_m;
+		Matrix<> opt_par = scythe::BFGS(obj_fun, init_par, mc_rng, 100, 10e-6, false);
+
+		/* second step */
+		moments moments;
+		moments.data_m = sample;
+		moments.moments_m = scythe::Matrix<>(sample.rows(), 3);
+		scythe::Matrix<> moments_m = moments(opt_par);
+		weights_m = sandwich::meat(moments_m, true);
+		weights_m = scythe::invpd(weights_m);
+		init_par = opt_par.copy();
+		obj_fun.weights_ = weights_m;
+		opt_par = scythe::BFGS(obj_fun, init_par, mc_rng, 100, 10e-6, false);
+
+		double dveps = scythe::var(dmid_m - opt_par(1,0) * sample(scythe::_,2));
+		double dvres = scythe::var(sample(scythe::_, 0) - (opt_par(0,0) + opt_par(1,0)) * sample(scythe::_, 1)
+						+ (opt_par(0,0) + opt_par(2,0)*opt_par(1,0)) * sample(scythe::_, 2));
+		explained_m = ((opt_par(0,0) + opt_par(1,0)) * sample(scythe::_, 1) + (opt_par(0,0) + opt_par(2,0) * opt_par(1,0)) * sample(scythe::_, 2));
+		double dSSE = nobs * scythe::var(explained_m);
+		double dSST = nobs * scythe::var(sample(scythe::_, 0));
+
+        #pragma omp critical
+	    {
+			pmatrix(iter, 0) = nobs;
+			pmatrix(iter, 1, iter, 5) = par(scythe::_, 0);
+			pmatrix(iter, 6, iter, 8) = opt_par(scythe::_,0);
+			pmatrix(iter, 12) = dvres;
+			pmatrix(iter, 13) = dveps;
+			pmatrix(iter, 14) = dSSE/dSST;
+	    }
+
+		/* results */
+		if (iter % verbose == 0) {
+		  Rprintf("Monte Carlo iteration %i of %i \n", (iter+1), niter);
+		  Rprintf("parameter = \n");
+          #pragma omp critical
+		  {
+			  for (unsigned int i = 0; i < 3; ++i)
+			  Rprintf("%10.5f\n", pmatrix(iter, i + 6));
+		  }
+		}
+
+		moments.moments_m = moments(opt_par);
+		moments_deriv momderiv;
+		momderiv.data_m = sample;
+		scythe::Matrix<> neweyWestM = sandwich::NeweyWest(opt_par, moments_m, weights_m, momderiv);
+        #pragma omp critical
+		{
+			pmatrix(iter, 9, iter, 11) = scythe::sqrt(scythe::diag(neweyWestM))(scythe::_, 0);
+		}
+
+		/*Rprintf("Newey West Cov:\n\n");
+		Rprintf("%10.10f\t%10.10f\t%10.10f\n", neweyWestM(0, 0), neweyWestM(0, 1), neweyWestM(0,2));
+		Rprintf("%10.10f\t%10.10f\t%10.10f\n", neweyWestM(1, 0), neweyWestM(1, 1), neweyWestM(1,2));
+		Rprintf("%10.10f\t%10.10f\t%10.10f\n\n", neweyWestM(2, 0), neweyWestM(2, 1), neweyWestM(2,2));*/
+
+		double dwald = (t(opt_par) * invpd(neweyWestM) * opt_par)(0,0);
+		dwald *= nobs;
+        #pragma omp critical
+		{
+			pmatrix(iter, 15) = dwald;
+		}
+		R_CheckUserInterrupt();
+
 	}
 
-	// construct the sample
-	Matrix<> sample(100000, 4);
-	sample(_, 1) = variables(0, 0, nobs - 2, 0);
-	sample(_, 2) = variables(1, 0, nobs - 1, 0);
-	sample(0, 3, nobs - 2, 3) = variables(0, 1, nobs - 2, 1) + variables(0, 2, nobs -2, 2) - variables(1, 2, nobs - 1, 2);
-    sample(0, 0, nobs - 2, 0) = sample(0, 1, nobs - 2, 1) * (par(0,0) + par(1,0)) - sample(0, 2, nobs - 2, 2) * (par(0,0)
-    		+ 0.2 * par(1,0)) + sample(0, 3, nobs - 2, 3);
-
-    // put matrix into sample_SEXP
-	for (unsigned int i = 0; i < (nobs - 1); ++i) {
-		for (unsigned int j = 0; j < 4; ++j) {
-		  REAL(sample_SEXP)[i + (nobs - 1) * j] = sample(i,j);
+	/* SEXP-matrix is always column major ordered */
+	for(unsigned int i = 0; i < niter; ++i) {
+		for(unsigned int j = 0; j < 16; ++j) {
+			REAL(parsample_SEXP)[i + niter * j] = pmatrix(i, j);
 		}
 	}
 
-	// GMM two-step method:
-	/* first step */
-	scythe::Matrix<> init_par(par.rows(), par.cols());
-	init_par = 0.05, 0.05, 0.1;
-	scythe::Matrix<> weights_m = scythe::eye(par.rows());
-	obj_fun_gmms2 obj_fun;
-	obj_fun.residuals_ = scythe::Matrix<>(nobs, 1);
-	obj_fun.data_ = sample;
-	obj_fun.moments_sum_ = scythe::Matrix<>(1, par.rows());
-	obj_fun.weights_ = weights_m;
-	Matrix<> opt_par = scythe::BFGS(obj_fun, init_par, stream, 100, 10e-6, false);
+	Rprintf("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n\n");
+	Rprintf("\tMonte Carlo simulation:\n"
+			"\titerations:%i\t\t observations:%i\n\n", niter, nobs);
+	Rprintf("\tparameter means are: \n");
+	Rprintf("\tphi:\t%-10.5f\n"
+			"\ttheta:\t%-10.5f\n"
+			"\trho:\t%-10.5f\n\n", scythe::mean(pmatrix(scythe::_, 6)),
+			scythe::mean(pmatrix(scythe::_, 7)), scythe::mean(pmatrix(scythe::_, 8)));
+	Rprintf("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n\n");
 
-	/* second step */
-	moments moments;
-	moments.data_m = sample;
-	moments.moments_m = scythe::Matrix<>(sample.rows(), 3);
-	scythe::Matrix<> moments_m = moments(opt_par);
-	weights_m = sandwich::meat(moments_m, true);
-	weights_m = scythe::invpd(weights_m);
-	init_par = opt_par;
-	obj_fun.weights_ = weights_m;
-	opt_par = scythe::BFGS(obj_fun, init_par, stream, 100, 10e-6, false);
-
-	/* results */
-	Rprintf("Optimal par: \n\n");
-	Rprintf("phi: %10.5f\n", opt_par(0,0));
-	Rprintf("theta: %10.5f\n", opt_par(1,0));
-	Rprintf("rho: %10.5f\n", opt_par(2,0));
-	moments.moments_m = moments(opt_par);
-	moments_deriv momderiv;
-	momderiv.data_m = sample;
-    scythe::Matrix<> neweyWestM = sandwich::NeweyWest(opt_par, moments_m, weights_m, momderiv);
-    Rprintf("Newey West Cov:\n");
-    Rprintf("%10.10f\t%10.10f\t%10.10f\n", neweyWestM(0, 0), neweyWestM(0, 1), neweyWestM(0,2));
-    Rprintf("%10.10f\t%10.10f\t%10.10f\n", neweyWestM(1, 0), neweyWestM(1, 1), neweyWestM(1,2));
-    Rprintf("%10.10f\t%10.10f\t%10.10f\n\n", neweyWestM(2, 0), neweyWestM(2, 1), neweyWestM(2,2));
 
 
 }
 extern "C" {
 
    SEXP MCgmmS_cc(SEXP fun, SEXP myframe, SEXP parameters_R, SEXP niter_R,
-    		SEXP nobs_R, SEXP covM_R,
+    		SEXP nobs_R, SEXP covM_R, SEXP verbose,
     		SEXP lecuyer_R, SEXP seedarray_R, SEXP lecuyerstream_R) {
 
-    	// put rng stuff together
+    	/* put rng stuff together */
  	   int seedarray[6];
  	   for(int i=0; i<6; ++i) seedarray[i] = INTEGER(seedarray_R)[i];
  	   int uselecuyer_cc = INTEGER(lecuyer_R)[0];
@@ -280,18 +381,19 @@ extern "C" {
  	   int* uselecuyer = &uselecuyer_cc;
  	   int* lecuyerstream = &lecuyerstream_cc;
 
+ 	   /* set constant parameters */
  	   const unsigned int npar = length(parameters_R);
  	   const unsigned int niter = INTEGER(niter_R)[0];
  	   const unsigned int nobs = INTEGER(nobs_R)[0];
  	   const unsigned int nobs_intern = nobs + 1;
 
- 	    // put covM_R into a Matrix
+ 	    /* put covM_R into a scythe::Matrix */
        double* covM_data = REAL(covM_R);
        const int covM_nr = nrows(covM_R);
        const int covM_nc = ncols(covM_R);
        Matrix<> covM (covM_nr, covM_nc, covM_data);
 
-       // put parameters_R into a Matrix
+       /* put parameters_R into a scythe::Matrix */
        double* par_data = REAL(parameters_R);
        const int par_nr = length(parameters_R);
        const int par_nc = 1;
@@ -300,11 +402,15 @@ extern "C" {
        SEXP sample_SEXP;
        PROTECT(sample_SEXP = allocMatrix(REALSXP, nobs, 4));
 
-       MCPKG_PASSRNG2MODEL(MCgmmS_impl, fun, myframe, niter, nobs_intern, par,
-    		   covM, sample_SEXP);
-       UNPROTECT(1);
+       SEXP parsample_SEXP;
+       PROTECT(parsample_SEXP = allocMatrix(REALSXP, niter, 16));
 
-       return sample_SEXP;
+       MCPKG_PASSRNG2MODEL(MCgmmS_impl, fun, myframe, niter, nobs_intern, par,
+    		   covM, INTEGER(verbose)[0], sample_SEXP, parsample_SEXP);
+
+       UNPROTECT(2);
+
+       return parsample_SEXP;
     }
 }
 

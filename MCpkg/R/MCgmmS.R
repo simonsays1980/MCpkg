@@ -5,7 +5,8 @@
 
 
 "MCgmmS" <- function(fun, parameters = NULL, niter = 1000, nobs = 1000,
-		covM = NULL, seed = NA, ...) {
+		covM = NULL, verbose = 0, seed = NA,
+		...) {
 	
 	# form seed
 	seeds <- form.seeds(seed)
@@ -16,11 +17,10 @@
 	# setup the environment so that fun can see the things passed as ...
 	gmm.fun <- function(ttt) fun(ttt, ...)
 	env.gmm.fun <- environment(fun = gmm.fun)
-	
-	
+
 	sample <- .Call("MCgmmS_cc", fun, env.gmm.fun, as.double(parameters), as.integer(niter), 
-			as.integer(nobs), as.matrix(covM), as.integer(lecuyer), 
+			as.integer(nobs), as.matrix(covM), as.integer(verbose), as.integer(lecuyer), 
 			as.integer(seed.array), as.integer(lecuyer.stream));
-	
+		
 	sample
 } 

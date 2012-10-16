@@ -29,7 +29,6 @@ namespace sandwich {
     scythe::Matrix<> bread(const scythe::Matrix<>&, const scythe::Matrix<>&, const scythe::Matrix<>&, FUNCTOR);
     scythe::Matrix<> meat(const scythe::Matrix<>&, const bool);
 
-
     template<typename FUNCTOR>
     inline scythe::Matrix<>
     NeweyWest(const scythe::Matrix<>& theta_v, const scythe::Matrix<>& moments_m, const scythe::Matrix<>& weights_m, FUNCTOR momderiv_f) {
@@ -53,14 +52,31 @@ namespace sandwich {
     	const uint npar = theta_v.rows();
     	scythe::Matrix<> bread_m(nmom, npar);
     	scythe::Matrix<> momderiv_m(nmom, npar);
+    	scythe::Matrix<> tmp_m(nmom, npar);
 
-        //#pragma omp parallel for schedule(dynamic) shared(momderiv_m)
-		for(unsigned int j = 0; j < nobs; ++j) {
+        /* Fastest implementation so far. Set number of threads to the number of available cores.
+         * TODO: check what happens if the loop gets nested in the parallel loop of the main function!
+         */
+    	omp_set_num_threads(2);
+        #pragma omp parallel
+    	{
+             #pragma omp for schedule(dynamic) firstprivate(momderiv_f)
+    		 for(unsigned int i = 0; i < nobs; ++i) {
+    			 tmp_m += momderiv_f(theta_v, i);
+
+    		 }
+             #pragma omp single nowait
+			 {
+				 momderiv_m += tmp_m;
+			 }
+    	}
+		/*for(unsigned int j = 0; j < nobs; ++j) {
 			momderiv_m += momderiv_f(theta_v, j);
-		}
+		}*/
 
 		momderiv_m*= 1.0/(nobs - 3);
-		//bread_m = weights_m * momderiv_m * scythe::invpd(t(momderiv_m) * weights_m * momderiv_m);
+		// This is the bread for GMM with weights matrix. In the optimal case it reduces to the one below.
+		// bread_m = weights_m * momderiv_m * scythe::invpd(t(momderiv_m) * weights_m * momderiv_m);
         bread_m = momderiv_m;
 
         return bread_m;
@@ -96,11 +112,11 @@ namespace sandwich {
 
     	meat_m += t(meat_m);
     	meat_m *= 1.0 / nobs;
-    	//meat_m = scythe::invpd(meat_m);
 
     	return meat_m;
     }
 
+    /* Implementation of Bartlett Kernel for Newey-West. Other HACs or HCs use other kernels not implemented yet. */
     inline scythe::Matrix<>
     computeWeights(const double& stepsize, const uint& pos_w) {
 
