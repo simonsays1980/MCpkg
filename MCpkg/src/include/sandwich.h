@@ -51,13 +51,12 @@ namespace sandwich {
     	const uint nmom = moments_m.cols();
     	const uint npar = theta_v.rows();
     	scythe::Matrix<> bread_m(nmom, npar);
-    	scythe::Matrix<> momderiv_m(nmom, npar);
-    	scythe::Matrix<> tmp_m(nmom, npar);
 
         /* Fastest implementation so far. Set number of threads to the number of available cores.
          * TODO: check what happens if the loop gets nested in the parallel loop of the main function!
+         * TODO: what is with the tmp_m Matrix? Needs to be private!
          */
-    	omp_set_num_threads(2);
+    	/*omp_set_num_threads(2);
         #pragma omp parallel
     	{
              #pragma omp for schedule(dynamic) firstprivate(momderiv_f)
@@ -67,17 +66,31 @@ namespace sandwich {
     		 }
              #pragma omp single nowait
 			 {
-				 momderiv_m += tmp_m;
+				 bread_m += tmp_m;
 			 }
-    	}
+    	}*/
 		/*for(unsigned int j = 0; j < nobs; ++j) {
 			momderiv_m += momderiv_f(theta_v, j);
 		}*/
 
-		momderiv_m*= 1.0/(nobs - 3);
-		// This is the bread for GMM with weights matrix. In the optimal case it reduces to the one below.
+        #pragma omp parallel schedule(dynamic)
+    	{
+    		scythe::Matrix<> tmp_m(nmom, npar);
+            #pragma omp for
+    		for(unsigned int i = 0; i < nobs; ++i) {
+    			tmp_m += momderiv_f(theta_v, i);
+    		}
+
+            #pragma omp critical
+    		{
+    			bread_m += tmp_m;
+    		}
+    	}
+
+		bread_m*= 1.0/(nobs - 3);
+		// This is the bread for GMM with weights matrix:
 		// bread_m = weights_m * momderiv_m * scythe::invpd(t(momderiv_m) * weights_m * momderiv_m);
-        bread_m = momderiv_m;
+		// In the optimal case it reduces to the one below.
 
         return bread_m;
     }

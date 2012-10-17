@@ -83,8 +83,8 @@
 #include "error.h"
 #include "defs.h"
 #ifdef SCYTHE_LAPACK
-#include "scythestat/lapack.h"
-#include "scythestat/stat.h"
+#include "lapack.h"
+#include "stat.h"
 #endif
 #endif
 

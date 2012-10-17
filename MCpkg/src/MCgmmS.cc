@@ -104,19 +104,20 @@ struct obj_fun_gmms2 {
 	scythe::Matrix<> data_;
 	scythe::Matrix<> moments_sum_;
 	scythe::Matrix<> weights_;
-	scythe::Matrix<> residuals_;
 	double funv;
 	double tmp;
+	double moment1, moment2, moment3 = 0;
 
 
-    double operator() (scythe::Matrix<> theta) {
+    double operator() (scythe::Matrix<> theta_v) {
 
-        double moment1, moment2, moment3 = 0;
+    	unsigned int nobs = data_.rows();
         omp_set_num_threads(2);
-        #pragma omp parallel for reduction(+:moment1, moment2, moment3) schedule(dynamic)
-        for(unsigned int i = 0; i < data_.rows(); ++i) {
-        	moment1 += data_(i, 2) * data_(i, 1) - data_(i, 1) * data_(i, 1) * theta(2,0);
-        	tmp = data_(i, 0) - (theta(0,0) + theta(1,0)) * data_(i, 1) + (theta(0,0) + theta(2,0) * theta(1,0)) * data_(i, 2);
+        #pragma omp parallel for reduction(+:moment1, moment2, moment3) private(tmp) schedule(dynamic)
+        for(unsigned int i = 0; i < nobs; ++i) {
+        	tmp = 0;
+        	moment1 += data_(i, 2) * data_(i, 1) - data_(i, 1) * data_(i, 1) * theta_v(2,0);
+        	tmp = data_(i, 0) - (theta_v(0,0) + theta_v(1,0)) * data_(i, 1) + (theta_v(0,0) + theta_v(2,0) * theta_v(1,0)) * data_(i, 2);
         	moment2 += tmp * data_(i, 1);
             moment3 += tmp * data_(i, 2);
         }
@@ -126,7 +127,7 @@ struct obj_fun_gmms2 {
         moments_sum_(0,2) = moment3;
         funv = (moments_sum_ * weights_ * t(moments_sum_)) (0,0);
 
-        funv *= 1.0 / data_.rows();
+        funv *= 1.0 / nobs;
         return funv;
 
     }
@@ -169,8 +170,9 @@ struct moments {
     double tmp;
 	scythe::Matrix<> operator() (const scythe::Matrix<>& theta_v) {
 
-        #pragma omp parallel for schedule(dynamic)
+        #pragma omp parallel for schedule(dynamic) shared(moments_m) private(tmp)
 	    for(unsigned int i = 0; i < data_m.rows(); ++i) {
+	       tmp = 0;
 		   moments_m(i, 0) = data_m(i, 2) * data_m(i, 1) - data_m(i, 1) * data_m(i, 1) * theta_v(2,0);
 		   tmp = data_m(i, 0) - (theta_v(0,0) + theta_v(1,0)) * data_m(i, 1) + (theta_v(0,0) + theta_v(2,0) * theta_v(1,0)) * data_m(i, 2);
 		   moments_m(i, 1) = tmp * data_m(i, 1);
@@ -189,17 +191,19 @@ void MCgmmS_impl(scythe::rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
 
     /* define constants */
 	const unsigned int nobs = nobs_intern - 1;
-	const unsigned int npar = par.rows();
+	const unsigned int npar = par.rows(); //TODO: Check if this is used somewhere
 
 	/* gnerate sample container */
 	scythe::Matrix<> pmatrix(niter, 16);
 
 	/* determine number of processors for OpenMP loop */
-	int nP = omp_get_num_procs();
-	Rprintf("\nOpenMP will use %i processors\n\n", nP);
+	/*int nP = omp_get_num_procs();
+	Rprintf("\nOpenMP will use %i processors\n\n", nP);*/
 
 	/* compute Markov chain transition probability */
     const double ptrans = (1 - par(2,0) * 1)/2;
+
+    double dveps, dvres, dSSE, dSST, dwald;
 
     /* generate pseudo-random number generator */
     mersenne mc_rng;
@@ -210,11 +214,9 @@ void MCgmmS_impl(scythe::rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
     mc_rng.SetPackageSeed(start_seed_array);*/
 
     /* Monte Carlo sampler */
-    if (omp_get_dynamic())
-      omp_set_dynamic(0);
-    omp_set_num_threads(nP);
-    #pragma omp parallel for schedule(dynamic) shared(pmatrix) private(mc_rng)
-	for(unsigned int iter = 0; iter < niter; ++iter) {
+    /*omp_set_num_threads(nP);
+    #pragma omp parallel for schedule(dynamic) shared(pmatrix) private(mc_rng, dveps, dres, dSSE, dSST, dwald)
+*/	for(unsigned int iter = 0; iter < niter; ++iter) {
 
 		/* set matrices */
 		scythe::Matrix<> mu(3, 1);
@@ -226,7 +228,7 @@ void MCgmmS_impl(scythe::rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
 		scythe::Matrix<> mean_m(1,3);
 
 		/* reset the pseudo-random number generator for no overlap */
-		mc_rng.initialize(1 + iter * nobs * 3);
+		/*mc_rng.initialize(1 + iter * nobs * 3);*/
 		/*if(iter != 0) {
         unsigned long rseed = 12345 + iter * nobs * 3;
         unsigned long rseed_array [6];
@@ -256,6 +258,7 @@ void MCgmmS_impl(scythe::rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
 		Matrix<> sample(nobs, 4);
 		sample(_, 1) = variables(0, 0, nobs_intern - 2, 0);
 		sample(_, 2) = variables(1, 0, nobs_intern - 1, 0);
+		// TODO: CHeck if it works also with scythe::_
 		sample(0, 3, nobs_intern - 2, 3) = variables(0, 1, nobs_intern - 2, 1) + variables(0, 2, nobs_intern -2, 2) - variables(1, 2, nobs_intern - 1, 2);
 		sample(0, 0, nobs_intern - 2, 0) = sample(0, 1, nobs_intern - 2, 1) * (par(0,0) + par(1,0)) - sample(0, 2, nobs_intern - 2, 2) * (par(0,0)
 				+ par(2,0) * par(1,0)) + sample(0, 3, nobs_intern - 2, 3);
@@ -278,7 +281,6 @@ void MCgmmS_impl(scythe::rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
 		init_par = 0.05, 0.05, 0.1;
 		scythe::Matrix<> weights_m = scythe::eye(3);
 		obj_fun_gmms2 obj_fun;
-		obj_fun.residuals_ = scythe::Matrix<>(nobs, 1);
 		obj_fun.data_ = sample;
 		obj_fun.moments_sum_ = scythe::Matrix<>(1, 3);
 		obj_fun.weights_ = weights_m;
@@ -288,6 +290,7 @@ void MCgmmS_impl(scythe::rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
 		moments moments;
 		moments.data_m = sample;
 		moments.moments_m = scythe::Matrix<>(sample.rows(), 3);
+		//TODO: Check if it suffices to call moms operator and then use moments.moments_m
 		scythe::Matrix<> moments_m = moments(opt_par);
 		weights_m = sandwich::meat(moments_m, true);
 		weights_m = scythe::invpd(weights_m);
@@ -295,42 +298,38 @@ void MCgmmS_impl(scythe::rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
 		obj_fun.weights_ = weights_m;
 		opt_par = scythe::BFGS(obj_fun, init_par, mc_rng, 100, 10e-6, false);
 
-		double dveps = scythe::var(dmid_m - opt_par(1,0) * sample(scythe::_,2));
-		double dvres = scythe::var(sample(scythe::_, 0) - (opt_par(0,0) + opt_par(1,0)) * sample(scythe::_, 1)
-						+ (opt_par(0,0) + opt_par(2,0)*opt_par(1,0)) * sample(scythe::_, 2));
-		explained_m = ((opt_par(0,0) + opt_par(1,0)) * sample(scythe::_, 1) + (opt_par(0,0) + opt_par(2,0) * opt_par(1,0)) * sample(scythe::_, 2));
-		double dSSE = nobs * scythe::var(explained_m);
-		double dSST = nobs * scythe::var(sample(scythe::_, 0));
+		dveps = scythe::var(dmid_m - opt_par(1,0) * sample(scythe::_,2));
+		explained_m = ((opt_par(0,0) + opt_par(1,0)) * sample(scythe::_, 1) - (opt_par(0,0) + opt_par(2,0) * opt_par(1,0)) * sample(scythe::_, 2));
+		dvres = scythe::var(sample(scythe::_, 0) - explained_m);
+		dSSE = nobs * scythe::var(explained_m);
+		dSST = nobs * scythe::var(sample(scythe::_, 0));
 
-        #pragma omp critical
-	    {
+
 			pmatrix(iter, 0) = nobs;
 			pmatrix(iter, 1, iter, 5) = par(scythe::_, 0);
 			pmatrix(iter, 6, iter, 8) = opt_par(scythe::_,0);
 			pmatrix(iter, 12) = dvres;
 			pmatrix(iter, 13) = dveps;
 			pmatrix(iter, 14) = dSSE/dSST;
-	    }
+
 
 		/* results */
 		if (iter % verbose == 0) {
 		  Rprintf("Monte Carlo iteration %i of %i \n", (iter+1), niter);
 		  Rprintf("parameter = \n");
-          #pragma omp critical
-		  {
+
 			  for (unsigned int i = 0; i < 3; ++i)
 			  Rprintf("%10.5f\n", pmatrix(iter, i + 6));
-		  }
+
 		}
 
-		moments.moments_m = moments(opt_par);
+		moments_m = moments(opt_par);
 		moments_deriv momderiv;
 		momderiv.data_m = sample;
 		scythe::Matrix<> neweyWestM = sandwich::NeweyWest(opt_par, moments_m, weights_m, momderiv);
-        #pragma omp critical
-		{
+
 			pmatrix(iter, 9, iter, 11) = scythe::sqrt(scythe::diag(neweyWestM))(scythe::_, 0);
-		}
+
 
 		/*Rprintf("Newey West Cov:\n\n");
 		Rprintf("%10.10f\t%10.10f\t%10.10f\n", neweyWestM(0, 0), neweyWestM(0, 1), neweyWestM(0,2));
@@ -339,10 +338,9 @@ void MCgmmS_impl(scythe::rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
 
 		double dwald = (t(opt_par) * invpd(neweyWestM) * opt_par)(0,0);
 		dwald *= nobs;
-        #pragma omp critical
-		{
+
 			pmatrix(iter, 15) = dwald;
-		}
+
 		R_CheckUserInterrupt();
 
 	}
