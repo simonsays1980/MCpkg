@@ -105,12 +105,14 @@ struct obj_fun_gmms2 {
 	scythe::Matrix<> moments_sum_;
 	scythe::Matrix<> weights_;
 	double funv;
-	double tmp;
-	double moment1, moment2, moment3 = 0;
+	double moment1, moment2, moment3;
 
 
     double operator() (scythe::Matrix<> theta_v) {
-
+        double moment1 = 0; 
+        double moment2 = 0; 
+        double moment3 = 0;
+        double tmp;
     	unsigned int nobs = data_.rows();
         omp_set_num_threads(2);
         #pragma omp parallel for reduction(+:moment1, moment2, moment3) private(tmp) schedule(dynamic)
@@ -119,7 +121,7 @@ struct obj_fun_gmms2 {
         	moment1 += data_(i, 2) * data_(i, 1) - data_(i, 1) * data_(i, 1) * theta_v(2,0);
         	tmp = data_(i, 0) - (theta_v(0,0) + theta_v(1,0)) * data_(i, 1) + (theta_v(0,0) + theta_v(2,0) * theta_v(1,0)) * data_(i, 2);
         	moment2 += tmp * data_(i, 1);
-            moment3 += tmp * data_(i, 2);
+                moment3 += tmp * data_(i, 2);
         }
         //Rprintf("moment1: %10.5f\t moment2: %10.5f\t moment3: %10.5f\n", moment1, moment2, moment3);
         moments_sum_(0,0) = moment1;
@@ -135,10 +137,9 @@ struct obj_fun_gmms2 {
 
 struct moments_deriv {
 	scythe::Matrix<> data_m;
-	scythe::Matrix<> moment_deriv_m;
 
 	scythe::Matrix<> operator() (const scythe::Matrix<>& theta_v, const unsigned int index) {
-
+        scythe::Matrix<> moment_deriv_m(3,3);
 		  const unsigned int npar = theta_v.rows();
           scythe::Matrix<> moment1_d(1, npar);
           scythe::Matrix<> moment2_d(1, npar);
@@ -166,12 +167,14 @@ struct moments_deriv {
 struct moments {
 
 	scythe::Matrix<> data_m;
-	scythe::Matrix<> moments_m;
-    double tmp;
-	scythe::Matrix<> operator() (const scythe::Matrix<>& theta_v) {
-
+	scythe::Matrix<> operator() (const scythe::Matrix<>& theta_v, const unsigned int nmom) {
+        
+        const unsigned int nobs = data_m.rows();
+        double tmp = 0;
+        scythe::Matrix<> moments_m(nobs, nmom);
+        
         #pragma omp parallel for schedule(dynamic) shared(moments_m) private(tmp)
-	    for(unsigned int i = 0; i < data_m.rows(); ++i) {
+	    for(unsigned int i = 0; i < nobs; ++i) {
 	       tmp = 0;
 		   moments_m(i, 0) = data_m(i, 2) * data_m(i, 1) - data_m(i, 1) * data_m(i, 1) * theta_v(2,0);
 		   tmp = data_m(i, 0) - (theta_v(0,0) + theta_v(1,0)) * data_m(i, 1) + (theta_v(0,0) + theta_v(2,0) * theta_v(1,0)) * data_m(i, 2);
@@ -191,7 +194,6 @@ void MCgmmS_impl(scythe::rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
 
     /* define constants */
 	const unsigned int nobs = nobs_intern - 1;
-	const unsigned int npar = par.rows(); //TODO: Check if this is used somewhere
 
 	/* gnerate sample container */
 	scythe::Matrix<> pmatrix(niter, 16);
@@ -289,9 +291,7 @@ void MCgmmS_impl(scythe::rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
 		/* second step */
 		moments moments;
 		moments.data_m = sample;
-		moments.moments_m = scythe::Matrix<>(sample.rows(), 3);
-		//TODO: Check if it suffices to call moms operator and then use moments.moments_m
-		scythe::Matrix<> moments_m = moments(opt_par);
+		scythe::Matrix<> moments_m = moments(opt_par, 3);
 		weights_m = sandwich::meat(moments_m, true);
 		weights_m = scythe::invpd(weights_m);
 		init_par = opt_par.copy();
@@ -322,12 +322,10 @@ void MCgmmS_impl(scythe::rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
 			  Rprintf("%10.5f\n", pmatrix(iter, i + 6));
 
 		}
-
-		moments_m = moments(opt_par);
+		moments_m = moments(opt_par, 3);
 		moments_deriv momderiv;
 		momderiv.data_m = sample;
 		scythe::Matrix<> neweyWestM = sandwich::NeweyWest(opt_par, moments_m, weights_m, momderiv);
-
 			pmatrix(iter, 9, iter, 11) = scythe::sqrt(scythe::diag(neweyWestM))(scythe::_, 0);
 
 
@@ -336,7 +334,7 @@ void MCgmmS_impl(scythe::rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
 		Rprintf("%10.10f\t%10.10f\t%10.10f\n", neweyWestM(1, 0), neweyWestM(1, 1), neweyWestM(1,2));
 		Rprintf("%10.10f\t%10.10f\t%10.10f\n\n", neweyWestM(2, 0), neweyWestM(2, 1), neweyWestM(2,2));*/
 
-		double dwald = (t(opt_par) * invpd(neweyWestM) * opt_par)(0,0);
+		dwald = (t(opt_par) * invpd(neweyWestM) * opt_par)(0,0);
 		dwald *= nobs;
 
 			pmatrix(iter, 15) = dwald;
@@ -380,7 +378,6 @@ extern "C" {
  	   int* lecuyerstream = &lecuyerstream_cc;
 
  	   /* set constant parameters */
- 	   const unsigned int npar = length(parameters_R);
  	   const unsigned int niter = INTEGER(niter_R)[0];
  	   const unsigned int nobs = INTEGER(nobs_R)[0];
  	   const unsigned int nobs_intern = nobs + 1;

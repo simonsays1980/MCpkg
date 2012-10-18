@@ -8,11 +8,19 @@
 #ifndef SANDWICH_H_
 #define SANDWICH_H_
 
+#ifdef SCYTHE_COMPILE_DIRECT
+#include "scythestat/matrix.h"
+#include "scythestat/defs.h"
+#include "scythestat/ide.h"
+#include "scythestat/la.h"
+#include "scythestat/optimize.h"
+#else
 #include <scythestat/matrix.h>
 #include <scythestat/defs.h>
 #include <scythestat/ide.h>
 #include <scythestat/la.h>
 #include <scythestat/optimize.h>
+#endif
 #include <cmath>
 #include <omp.h>
 #include <R.h>
@@ -73,10 +81,10 @@ namespace sandwich {
 			momderiv_m += momderiv_f(theta_v, j);
 		}*/
 
-        #pragma omp parallel schedule(dynamic)
+        #pragma omp parallel 
     	{
     		scythe::Matrix<> tmp_m(nmom, npar);
-            #pragma omp for
+            #pragma omp for schedule(dynamic)
     		for(unsigned int i = 0; i < nobs; ++i) {
     			tmp_m += momderiv_f(theta_v, i);
     		}
