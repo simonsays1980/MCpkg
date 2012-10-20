@@ -199,8 +199,15 @@ void MCgmmS_impl(scythe::rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
 	scythe::Matrix<> pmatrix(niter, 16);
 
 	/* determine number of processors for OpenMP loop */
-	/*int nP = omp_get_num_procs();
-	Rprintf("\nOpenMP will use %i processors\n\n", nP);*/
+	if(niter <= 50) {
+            Rprintf("\nOpenMP will use 20 processors\n\n");
+            omp_set_num_threads(20);
+        }
+	else { 
+            int nP = omp_get_num_procs();
+	    Rprintf("\nOpenMP will use %i processors\n\n", nP);
+            omp_set_num_threads(nP);
+        }
 
 	/* compute Markov chain transition probability */
     const double ptrans = (1 - par(2,0) * 1)/2;

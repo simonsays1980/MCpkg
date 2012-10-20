@@ -80,7 +80,7 @@ namespace sandwich {
 		/*for(unsigned int j = 0; j < nobs; ++j) {
 			momderiv_m += momderiv_f(theta_v, j);
 		}*/
-
+        omp_set_nested(1);
         #pragma omp parallel 
     	{
     		scythe::Matrix<> tmp_m(nmom, npar);
