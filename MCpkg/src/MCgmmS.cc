@@ -199,14 +199,16 @@ void MCgmmS_impl(scythe::rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
 	scythe::Matrix<> pmatrix(niter, 16);
 
 	/* determine number of processors for OpenMP loop */
-	if(niter <= 50) {
+	int nP = omp_get_num_procs();
+	omp_set_nested(1);
+	if(niter <= 50 && nP >= 20) {
             Rprintf("\nOpenMP will use 20 processors\n\n");
             omp_set_num_threads(20);
         }
 	else { 
-            int nP = omp_get_num_procs();
+
 	    Rprintf("\nOpenMP will use %i processors\n\n", nP);
-            omp_set_num_threads(nP);
+        omp_set_num_threads(nP);
         }
 
 	/* compute Markov chain transition probability */
@@ -223,7 +225,7 @@ void MCgmmS_impl(scythe::rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
     mc_rng.SetPackageSeed(start_seed_array);*/
 
     /* Monte Carlo sampler */
-    #pragma omp parallel for schedule(dynamic) shared(pmatrix) private(mc_rng, dveps, dres, dSSE, dSST, dwald)
+    #pragma omp parallel for schedule(dynamic) shared(pmatrix) private(mc_rng, dveps, dvres, dSSE, dSST, dwald)
     for(unsigned int iter = 0; iter < niter; ++iter) {
 
 		/* set matrices */
