@@ -223,9 +223,8 @@ void MCgmmS_impl(scythe::rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
     mc_rng.SetPackageSeed(start_seed_array);*/
 
     /* Monte Carlo sampler */
-    /*omp_set_num_threads(nP);
     #pragma omp parallel for schedule(dynamic) shared(pmatrix) private(mc_rng, dveps, dres, dSSE, dSST, dwald)
-*/	for(unsigned int iter = 0; iter < niter; ++iter) {
+    for(unsigned int iter = 0; iter < niter; ++iter) {
 
 		/* set matrices */
 		scythe::Matrix<> mu(3, 1);
@@ -237,7 +236,7 @@ void MCgmmS_impl(scythe::rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
 		scythe::Matrix<> mean_m(1,3);
 
 		/* reset the pseudo-random number generator for no overlap */
-		/*mc_rng.initialize(1 + iter * nobs * 3);*/
+		mc_rng.initialize(1 + iter * nobs * 3);
 		/*if(iter != 0) {
         unsigned long rseed = 12345 + iter * nobs * 3;
         unsigned long rseed_array [6];
