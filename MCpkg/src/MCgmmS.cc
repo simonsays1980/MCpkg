@@ -114,7 +114,6 @@ struct obj_fun_gmms2 {
         double moment3 = 0;
         double tmp;
     	unsigned int nobs = data_.rows();
-        omp_set_num_threads(2);
         #pragma omp parallel for reduction(+:moment1, moment2, moment3) private(tmp) schedule(dynamic)
         for(unsigned int i = 0; i < nobs; ++i) {
         	tmp = 0;
