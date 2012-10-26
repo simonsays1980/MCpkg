@@ -1,8 +1,7 @@
 ## Use the R_HOME indirection to support installations of multiple R version
 PKG_LIBS = `$(R_HOME)/bin/Rscript -e "Rcpp:::LdFlags()"` -lgomp
-PKG_CPPFLAGS = -ggdb3 -g3 -DSCYTHE_DEBUG=3 -DSCYTHE_COMPILE_DIRECT -DHAVE_TRUNK -DSCYTHE_PTHREAD -pthread
+PKG_CPPFLAGS = -g3 -DSCYTHE_DEBUG=3 -DSCYTHE_COMPILE_DIRECT -DHAVE_TRUNK -DSCYTHE_PTHREAD -pthread
 PKG_CXXFLAGS = -g3 -fopenmp -Wno-write-strings
-PKG_CFLAGS = -g3
 PKG_CXX="skin -pomp ${CXX}"
 ##-DSCYTHE_LAPACK -llapack -lblas -pthread for using optimized BLAS and LAPACK routines 
 ## As an alternative, one can also add this code in a file 'configure'

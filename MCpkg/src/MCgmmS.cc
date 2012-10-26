@@ -105,7 +105,6 @@ struct obj_fun_gmms2 {
 	scythe::Matrix<> moments_sum_;
 	scythe::Matrix<> weights_;
 	double funv;
-	double moment1, moment2, moment3;
 
 
     double operator() (scythe::Matrix<> theta_v) {
