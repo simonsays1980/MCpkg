@@ -208,7 +208,7 @@ void MCgmmS_impl(scythe::rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
 	    Rprintf("\nOpenMP will use %i processors\n\n", nP);
         omp_set_num_threads(nP);
         }
-
+        int chunksize = std::floor(niter/nP);
 	/* compute Markov chain transition probability */
     const double ptrans = (1 - par(2,0) * 1)/2;
 
@@ -223,7 +223,7 @@ void MCgmmS_impl(scythe::rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
     mc_rng.SetPackageSeed(start_seed_array);*/
 
     /* Monte Carlo sampler */
-    #pragma omp parallel for schedule(dynamic) shared(pmatrix) private(mc_rng, dveps, dvres, dSSE, dSST, dwald)
+    #pragma omp parallel for schedule(dynamic, chunksize) shared(pmatrix) private(mc_rng, dveps, dvres, dSSE, dSST, dwald)
     for(unsigned int iter = 0; iter < niter; ++iter) {
 
 		/* set matrices */
@@ -320,7 +320,7 @@ void MCgmmS_impl(scythe::rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
 
 
 		/* results */
-		if (iter % verbose == 0) {
+		if ((iter + 1) % verbose == 0) {
 		  Rprintf("Monte Carlo iteration %i of %i \n", (iter+1), niter);
 		  Rprintf("parameter = \n");
 
@@ -345,9 +345,8 @@ void MCgmmS_impl(scythe::rng<RNGTYPE>& stream, SEXP& fun, SEXP& myframe,
 
 			pmatrix(iter, 15) = dwald;
 
-		R_CheckUserInterrupt();
-
 	}
+        R_CheckUserInterrupt();
 
 	/* SEXP-matrix is always column major ordered */
 	for(unsigned int i = 0; i < niter; ++i) {
